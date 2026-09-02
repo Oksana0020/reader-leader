@@ -1,6 +1,6 @@
 # Reader Leader
 
-Reader Leader is a Next.js App Router walking skeleton for a UK and Hiberno-English early-reading fluency tutor. Phase 1 establishes the reference-led interface system, complete route map, typed domain model, deterministic seed state, local session persistence, and a mockable speech-alignment endpoint.
+Reader Leader is a Next.js App Router walking skeleton for a UK and Hiberno-English early-reading fluency tutor. It now implements the single-path student and educator loop: story selection, memory-safe live listening, timed hesitation support, celebration, a generated running record, and an auditable two-click teacher override.
 
 ## Foundation Stack
 
@@ -10,7 +10,8 @@ Reader Leader is a Next.js App Router walking skeleton for a UK and Hiberno-Engl
 | Language | TypeScript in strict mode |
 | Styling | Tailwind CSS 4 with project-specific CSS tokens |
 | Validation | Zod at the `/api/speech/align` boundary |
-| State | Typed React context persisted to `localStorage` with deterministic fallback data |
+| State | Versioned typed React context persisted to `localStorage` with safe seed fallback |
+| Audio | Web Audio `AnalyserNode` VAD plus `MediaRecorder`, with explicit teardown on finish and unmount |
 | Icons | Lucide React plus the Reader Leader star-and-sound mark |
 
 ## Routes
@@ -18,20 +19,20 @@ Reader Leader is a Next.js App Router walking skeleton for a UK and Hiberno-Engl
 | Route | Purpose |
 |---|---|
 | `/` | Story-band selection library |
-| `/read` | Reading-canvas foundation for the later Web Audio FSM |
+| `/read` | Dynamic reading canvas with microphone capture and 3s/5s hesitation support |
 | `/celebrate` | Student celebration and educator-record handoff |
 | `/dashboard` | Class metrics and phonetic-gap overview |
-| `/dashboard/student` | Student profile and seeded running record |
+| `/dashboard/student` | Latest/seeded running record with two-click teacher override and audit state |
 | `POST /api/speech/align` | Typed deterministic alignment mock |
 
 ## Run Locally
 
-Install dependencies with `pnpm install`, start the development server with `pnpm dev`, and open `http://localhost:3000`. Run `pnpm check` for lint and strict TypeScript validation. Run `NODE_ENV=production pnpm build` in environments that already inject a development `NODE_ENV` value.
+Install dependencies with `pnpm install`, start the development server with `pnpm dev`, and open `http://localhost:3000`. Run `pnpm check` for lint and strict TypeScript validation, `pnpm verify:core` for the threshold/metrics assertions, and `pnpm verify:browser` for the self-contained Chromium flow with fake silent audio. Run `NODE_ENV=production pnpm build` in environments that already inject a development `NODE_ENV` value.
 
 ## Phonics Restraint Contract
 
-The alignment mock treats **“knight” pronounced as `/n-aɪ-t/` as correct**, applies no cue, and records a 0% penalty. The provisional educator demonstration is a separate fixture in which a child sounds the silent letter as `/k-n-aɪ-t/`. That fixture is labelled for educator review and remains non-penalising until professional judgement is confirmed.
+The alignment mock treats **“knight” pronounced as `/n-aɪ-t/` as correct**, applies no cue, and records a 0% penalty. The provisional educator demonstration is a separate fixture in which a child sounds the silent letter as `/k-n-aɪ-t/`. That fixture is labelled for educator review and remains non-penalising. A confirmed teacher decision becomes `accepted-teacher-override`, preserving a clean distinction from automated `accepted-regional-variant` restraint in the audit log.
 
-## Phase Boundary
+## Audio Lifecycle
 
-Phase 1 intentionally provides the architectural and visual foundation. The live Web Audio analyser, pure 3-second/5-second hesitation state machine, two-step override interaction, and final interaction hardening remain for the approved implementation phases that follow.
+The microphone hook owns its complete resource graph. Starting creates one stream, source, analyser, animation-frame loop, optional recorder, and audio context. Finishing, cancellation, errors, and component unmount all stop every media track, cancel the frame loop, disconnect source and analyser nodes, stop the recorder when active, and close the `AudioContext` idempotently.

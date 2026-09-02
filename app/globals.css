@@ -1,5 +1,9 @@
 /* Reference-led rule: preserve the shared Reader Teal, warm cream, mustard gold, rounded geometry, and soft low-contrast depth across every route. */
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "../app";
+@source "../components";
+@source "../hooks";
+@source "../lib";
 
 :root {
   --reader-cream: #fbf8ee;
@@ -83,6 +87,36 @@ button:not(:disabled), a[href] { cursor: pointer; }
 .pressable:active { transform: scale(0.97); }
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+.microphone-control {
+  box-shadow: 0 0 30px 14px rgba(104, 208, 160, 0.24);
+}
+
+.microphone-wave {
+  position: absolute;
+  inset: -2rem;
+  border: 4px solid rgba(101, 188, 177, 0.22);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.microphone-wave.wave-two { inset: -3.5rem; opacity: 0.55; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .microphone-control.is-listening .microphone-wave { animation: microphone-breathe 1.8s var(--ease-out) infinite alternate; }
+  .microphone-control.is-listening .wave-two { animation-delay: 180ms; }
+}
+
+@keyframes microphone-breathe {
+  from { opacity: 0.24; transform: scale(0.96); }
+  to { opacity: 0.72; transform: scale(1.04); }
+}
+
+@media print {
+  nav, button { display: none !important; }
+  .educator-canvas { background: white; padding: 0; }
+  .educator-card { box-shadow: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

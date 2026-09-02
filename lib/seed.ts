@@ -26,6 +26,7 @@ export const STORIES: Story[] = [
   { id: "bears-hat", title: "Bear's Hat", level: 3, band: "yellow", bandLabel: "Level 3: Yellow Band", focus: "Consonant Blends", targetText: "The brown bear found a bright hat.", imageUrl: STORY_ASSETS.bearsHat },
   { id: "ship-trip", title: "Ship Trip", level: 3, band: "yellow", bandLabel: "Level 3: Yellow Band", focus: "Consonant Blends", targetText: "The ship went on a long trip.", imageUrl: STORY_ASSETS.shipTrip },
   { id: "fox-box", title: "Fox Box", level: 3, band: "yellow", bandLabel: "Level 3: Yellow Band", focus: "Consonant Blends", targetText: "The quick fox hid in a box.", imageUrl: STORY_ASSETS.foxBox },
+  { id: "brave-knight", title: "The Brave Knight", level: 5, band: "green", bandLabel: "Level 5: Green Band", focus: "Trigraphs & Silent Letters", targetText: "The brave knight went out into the cold night to find his lost horse." },
 ];
 
 export const ACCEPTED_REGIONAL_VARIANTS = [{
@@ -46,14 +47,14 @@ runningRecordTokens[2] = {
   cueRecommendation: "Review only; do not penalise until educator judgement is confirmed.",
 };
 
-runningRecordTokens[12] = {
-  ...runningRecordTokens[12], token: "horse.", status: "hesitation", confidence: 0.93,
+runningRecordTokens[13] = {
+  ...runningRecordTokens[13], token: "horse.", status: "hesitation", confidence: 0.93,
   explanation: "Five-second hesitation before the final word.", scoreImpact: false,
   cueRecommendation: "Offer the initial /h/ cue if the pause continues.",
 };
 
 export const SEEDED_RUNNING_RECORD: AlignmentResponse = {
-  sessionId: "session-jack-001", localeProfile: "en-GB", restraintApplied: true, lastConfirmedTokenIndex: 12,
+  sessionId: "session-jack-001", localeProfile: "en-GB", restraintApplied: true, lastConfirmedTokenIndex: 13,
   tokens: runningRecordTokens, metrics: { accuracyRate: 94, wcpm: 62, elapsedSeconds: 21 },
 };
 
@@ -65,10 +66,42 @@ export const CLASS_STUDENTS: StudentMetric[] = [
 
 export const DEFAULT_STATE: ReaderLeaderState = {
   selectedStoryId: "fat-cat",
-  session: { id: "session-jack-001", studentId: "jack-murphy", storyId: "fat-cat", localeProfile: "en-GB", status: "ready", currentTokenIndex: 2, alignment: SEEDED_RUNNING_RECORD, earnedBadges: ["great-listening", "phonics-champion", "speed-reader"] },
+  session: {
+    id: "session-jack-001",
+    studentId: "jack-murphy",
+    storyId: "fat-cat",
+    storySnapshot: {
+      id: "fat-cat",
+      title: "The Fat Cat",
+      level: 1,
+      band: "pink",
+      bandLabel: "Level 1: Pink Band",
+      focus: "CVC Words",
+      targetText: "The big cat sat on the mat.",
+      imageUrl: STORY_ASSETS.fatCat,
+    },
+    localeProfile: "en-GB",
+    status: "ready",
+    currentTokenIndex: 2,
+    elapsedMs: 0,
+    earnedBadges: ["great-listening", "phonics-champion", "speed-reader"],
+  },
   overrides: [],
 };
 
 export function getStory(storyId: ReaderLeaderState["selectedStoryId"]): Story {
   return STORIES.find((story) => story.id === storyId) ?? STORIES[0];
+}
+
+export function getStorySnapshot(story: Story) {
+  return {
+    id: story.id,
+    title: story.title,
+    level: story.level,
+    band: story.band,
+    bandLabel: story.bandLabel,
+    focus: story.focus,
+    targetText: story.targetText,
+    imageUrl: story.imageUrl,
+  };
 }

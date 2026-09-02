@@ -2,13 +2,17 @@
   "name": "reader-leader",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
+    "build:verify": "NODE_ENV=production NEXT_DIST_DIR=.next-browser next build",
     "start": "next start --hostname 0.0.0.0 --port 3000",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "check": "pnpm lint && pnpm typecheck",
+    "verify:core": "node --experimental-strip-types scripts/verify-core.ts",
+    "verify:browser": "pnpm build:verify && node scripts/verify-browser.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

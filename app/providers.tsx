@@ -2,53 +2,126 @@
 
 /* Reference-led rule: shared state must remain invisible to the child-facing composition and preserve one calm action at a time. */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { DEFAULT_STATE } from "@/lib/seed";
-import type { AlignmentResponse, OverrideEvent, ReaderLeaderState, StoryId } from "@/lib/domain";
-
-const STORAGE_KEY = "reader-leader-session-v1";
+import { DEFAULT_STATE, getStory, getStorySnapshot } from "@/lib/seed";
+import { loadReaderLeaderState, saveReaderLeaderState } from "@/lib/session-storage";
+import { recalculateAlignmentMetrics } from "@/lib/reading-metrics";
+import type { AlignmentResponse, ReaderLeaderState, StoryId } from "@/lib/domain";
 
 interface SessionContextValue {
   state: ReaderLeaderState;
   hydrated: boolean;
   selectStory: (storyId: StoryId) => void;
-  saveAlignment: (alignment: AlignmentResponse) => void;
-  addOverride: (event: OverrideEvent) => void;
+  startReading: () => void;
+  setCurrentToken: (tokenIndex: number) => void;
+  beginAlignment: (elapsedMs: number) => void;
+  completeReading: (alignment: AlignmentResponse, elapsedMs: number) => void;
+  confirmOverride: (tokenId: string, reason: string) => void;
   reset: () => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<ReaderLeaderState>(() => {
-    if (typeof window === "undefined") return DEFAULT_STATE;
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      return stored ? (JSON.parse(stored) as ReaderLeaderState) : DEFAULT_STATE;
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-      return DEFAULT_STATE;
-    }
-  });
-  const hydrated = typeof window !== "undefined";
+  const [state, setState] = useState<ReaderLeaderState>(DEFAULT_STATE);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (hydrated) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    document.documentElement.dataset.readerLeaderHydrated = "true";
+    const restored = loadReaderLeaderState(window.localStorage);
+    queueMicrotask(() => {
+      setState(restored);
+      setHydrated(true);
+    });
+    return () => {
+      delete document.documentElement.dataset.readerLeaderHydrated;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) saveReaderLeaderState(window.localStorage, state);
   }, [hydrated, state]);
 
   const selectStory = useCallback((storyId: StoryId) => {
-    setState((current) => ({ ...current, selectedStoryId: storyId, session: { ...current.session, storyId, status: "ready", currentTokenIndex: 0 } }));
+    const story = getStory(storyId);
+    setState((current) => ({
+      ...current,
+      selectedStoryId: storyId,
+      session: {
+        id: `session-${Date.now()}`,
+        studentId: current.session.studentId,
+        storyId,
+        storySnapshot: getStorySnapshot(story),
+        localeProfile: current.session.localeProfile,
+        status: "ready",
+        currentTokenIndex: Math.min(2, story.targetText.split(/\s+/).length - 1),
+        elapsedMs: 0,
+        alignment: undefined,
+        earnedBadges: [],
+      },
+    }));
   }, []);
 
-  const saveAlignment = useCallback((alignment: AlignmentResponse) => {
-    setState((current) => ({ ...current, session: { ...current.session, status: "complete", alignment, completedAt: new Date().toISOString() } }));
+  const startReading = useCallback(() => {
+    setState((current) => ({
+      ...current,
+      session: { ...current.session, status: "reading", startedAt: new Date().toISOString(), completedAt: undefined, elapsedMs: 0, alignment: undefined },
+    }));
   }, []);
 
-  const addOverride = useCallback((event: OverrideEvent) => {
-    setState((current) => ({ ...current, overrides: [...current.overrides, event] }));
+  const setCurrentToken = useCallback((tokenIndex: number) => {
+    setState((current) => ({ ...current, session: { ...current.session, currentTokenIndex: Math.max(0, tokenIndex) } }));
+  }, []);
+
+  const beginAlignment = useCallback((elapsedMs: number) => {
+    setState((current) => ({ ...current, session: { ...current.session, status: "aligning", elapsedMs } }));
+  }, []);
+
+  const completeReading = useCallback((alignment: AlignmentResponse, elapsedMs: number) => {
+    setState((current) => ({
+      ...current,
+      session: {
+        ...current.session,
+        status: "complete",
+        alignment,
+        elapsedMs,
+        completedAt: new Date().toISOString(),
+        earnedBadges: ["great-listening", "phonics-champion", "speed-reader"],
+      },
+    }));
+  }, []);
+
+  const confirmOverride = useCallback((tokenId: string, reason: string) => {
+    setState((current) => {
+      const alignment = current.session.alignment;
+      const token = alignment?.tokens.find((candidate) => candidate.id === tokenId);
+      if (!alignment || !token || token.status === "accepted-teacher-override") return current;
+
+      const updatedAlignment = recalculateAlignmentMetrics({
+        ...alignment,
+        tokens: alignment.tokens.map((candidate) => candidate.id === tokenId
+          ? { ...candidate, status: "accepted-teacher-override", scoreImpact: false, explanation: `${candidate.explanation ?? "Pronunciation reviewed."} Accepted by educator.` }
+          : candidate),
+      });
+
+      return {
+        ...current,
+        session: { ...current.session, alignment: updatedAlignment },
+        overrides: [...current.overrides, {
+          id: globalThis.crypto.randomUUID(),
+          sessionId: current.session.id,
+          tokenId,
+          previousStatus: token.status,
+          nextStatus: "accepted-teacher-override",
+          actorLabel: "Jack Murphy’s educator",
+          reason,
+          createdAt: new Date().toISOString(),
+        }],
+      };
+    });
   }, []);
 
   const reset = useCallback(() => setState(DEFAULT_STATE), []);
-  const value = useMemo(() => ({ state, hydrated, selectStory, saveAlignment, addOverride, reset }), [addOverride, hydrated, reset, saveAlignment, selectStory, state]);
+  const value = useMemo(() => ({ state, hydrated, selectStory, startReading, setCurrentToken, beginAlignment, completeReading, confirmOverride, reset }), [beginAlignment, completeReading, confirmOverride, hydrated, reset, selectStory, setCurrentToken, startReading, state]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

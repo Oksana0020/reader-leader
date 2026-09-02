@@ -5,11 +5,13 @@ import type { AlignmentResponse, TokenAlignment } from "@/lib/domain";
 
 const requestSchema = z.object({
   sessionId: z.string().min(1),
-  storyId: z.enum(["fat-cat", "big-dog", "sun-bun", "pig-in-mud", "red-hen", "frog-log", "bears-hat", "ship-trip", "fox-box"]),
+  storyId: z.enum(["fat-cat", "big-dog", "sun-bun", "pig-in-mud", "red-hen", "frog-log", "bears-hat", "ship-trip", "fox-box", "brave-knight"]),
   targetText: z.string().min(1),
   localeProfile: z.enum(["en-GB", "en-IE"]),
   elapsedMs: z.number().nonnegative(),
   isFinal: z.boolean(),
+  currentTokenIndex: z.number().int().nonnegative().optional(),
+  audioBytes: z.number().int().nonnegative().optional(),
   demoAttempt: z.enum(["standard", "sounded-silent-k"]).optional(),
 });
 
