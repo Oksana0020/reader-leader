@@ -131,6 +131,24 @@ try {
 
   await client.command("Page.navigate", { url: APP_URL });
   await waitForValue(client.evaluate, "document.documentElement.dataset.readerLeaderHydrated === 'true'");
+  assert.equal(await client.evaluate(`(() => { const section = [...document.querySelectorAll('section')].find((candidate) => candidate.querySelector('h2')?.textContent?.includes('Level 5: Green Band')); return section?.querySelectorAll('button').length; })()`), 3);
+  assert.equal(await client.evaluate(`['The Brave Knight', 'The Lost Shield', "King's Ring"].every((title) => [...document.querySelectorAll('button')].some((button) => button.textContent?.includes(title)))`), true);
+
+  await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('The Lost Shield'))?.click()`);
+  await waitForValue(client.evaluate, "location.pathname === '/read'");
+  await waitForValue(client.evaluate, "JSON.parse(localStorage.getItem('reader-leader-session-v2')).state.session.currentTokenIndex === 0");
+  assert.equal(await client.evaluate("document.body.textContent.includes('The knight searched the castle for his lost shield.')"), true);
+  await client.evaluate("document.querySelector('button[aria-label=\"Next target word\"]')?.click()");
+  await client.evaluate("document.querySelector('button[aria-label=\"Next target word\"]')?.click()");
+  await waitForValue(client.evaluate, "JSON.parse(localStorage.getItem('reader-leader-session-v2')).state.session.currentTokenIndex === 2");
+  await client.command("Page.navigate", { url: `${APP_URL}/celebrate` });
+  await waitForValue(client.evaluate, "document.body.textContent.includes('Read Again')");
+  await client.evaluate(`[...document.querySelectorAll('a')].find((anchor) => anchor.textContent?.includes('Read Again'))?.click()`);
+  await waitForValue(client.evaluate, "location.pathname === '/read'");
+  await waitForValue(client.evaluate, "JSON.parse(localStorage.getItem('reader-leader-session-v2')).state.session.currentTokenIndex === 0");
+
+  await client.command("Page.navigate", { url: APP_URL });
+  await waitForValue(client.evaluate, "document.documentElement.dataset.readerLeaderHydrated === 'true'");
   await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('The Brave Knight'))?.click()`);
   await waitForValue(client.evaluate, "location.pathname === '/read'");
   assert.equal(await client.evaluate("document.querySelector('button[aria-pressed=\"true\"]')?.textContent.includes('Agent Restraint')"), true);
@@ -155,6 +173,13 @@ try {
   await waitForValue(client.evaluate, "document.body.textContent.includes('Listen to Attempt (2s)')");
   await client.evaluate("document.querySelector('button[aria-label=\"Play the retained two-second attempt\"]')?.click()");
   await waitForValue(client.evaluate, "document.body.textContent.includes('Playing the retained two-second attempt') || document.body.textContent.includes('Attempt playback complete')");
+  await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Review Override'))?.click()`);
+  await waitForValue(client.evaluate, "document.body.textContent.includes('Accept Pronunciation')");
+  await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Accept Pronunciation'))?.click()`);
+  await waitForValue(client.evaluate, "document.body.textContent.includes('Accepted by Educator')");
+  const overrideEnvelope = JSON.parse(await client.evaluate("localStorage.getItem('reader-leader-session-v2')"));
+  assert.equal(overrideEnvelope.state.overrides.at(-1).sessionId, regional.id);
+  assert.equal(overrideEnvelope.state.session.alignment.tokens.find((token) => token.token === "knight").status, "accepted-teacher-override");
 
   await client.command("Page.navigate", { url: APP_URL });
   await waitForValue(client.evaluate, "document.documentElement.dataset.readerLeaderHydrated === 'true'");
@@ -174,7 +199,26 @@ try {
   assert.equal(standard.evaluationMode, "standard-rp");
   assert.equal(standard.alignment.tokens.find((token) => token.token.startsWith("horse")).status, "substitution");
   assert.equal(standard.alignment.metrics.falseCorrectionRate, 7.1);
-  console.log("Phase 4 browser flow passed: dynamic progression, active-word pause support, retained audio playback, auto-finish, and both evaluation modes.");
+
+  await client.command("Page.navigate", { url: APP_URL });
+  await waitForValue(client.evaluate, "document.documentElement.dataset.readerLeaderHydrated === 'true'");
+  await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('The Fat Cat'))?.click()`);
+  await waitForValue(client.evaluate, "location.pathname === '/read'");
+  for (let index = 0; index < 6; index += 1) {
+    await client.evaluate("document.querySelector('button[aria-label=\"Next target word\"]')?.click()");
+    await sleep(50);
+  }
+  await client.evaluate("document.querySelector('button[aria-label=\"Finish this reading\"]')?.click()");
+  await waitForValue(client.evaluate, "location.pathname === '/celebrate'", 12_000);
+  await client.evaluate(`[...document.querySelectorAll('a')].find((anchor) => anchor.textContent?.includes('View Educator Record'))?.click()`);
+  await waitForValue(client.evaluate, "location.pathname === '/dashboard/student'");
+  const introductoryEnvelope = JSON.parse(await client.evaluate("localStorage.getItem('reader-leader-session-v2')"));
+  assert.equal(introductoryEnvelope.state.session.alignment.metrics.accuracyRate, 100);
+  assert.equal(introductoryEnvelope.state.session.alignment.tokens.every((token) => token.status === "correct"), true);
+  assert.equal(await client.evaluate("document.body.textContent.includes('Teacher override saved.')"), false);
+  assert.equal(await client.evaluate("document.body.textContent.includes('Practising cvc words and short vowels')"), true);
+  assert.equal(await client.evaluate("document.body.textContent.includes('Reviewed sounded silent')"), false);
+  console.log("Green Band, reset, Brave Knight preservation, and non-hero educator isolation browser flow passed.");
 } catch (error) {
   console.error("Browser verification failed:", error);
   if (client) console.error("Captured runtime events:", JSON.stringify(client.events, null, 2));

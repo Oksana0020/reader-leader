@@ -11,6 +11,7 @@ interface SessionContextValue {
   state: ReaderLeaderState;
   hydrated: boolean;
   selectStory: (story: Story) => void;
+  prepareReadingAttempt: () => void;
   startReading: () => void;
   setCurrentToken: (tokenIndex: number) => void;
   setEvaluationMode: (mode: EvaluationMode) => void;
@@ -63,10 +64,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const prepareReadingAttempt = useCallback(() => {
+    setState((current) => ({
+      ...current,
+      session: {
+        ...current.session,
+        id: `session-${Date.now()}`,
+        status: "ready",
+        currentTokenIndex: 0,
+        elapsedMs: 0,
+        alignment: undefined,
+        attemptSnippet: undefined,
+        earnedBadges: [],
+        startedAt: undefined,
+        completedAt: undefined,
+      },
+    }));
+  }, []);
+
   const startReading = useCallback(() => {
     setState((current) => ({
       ...current,
-      session: { ...current.session, status: "reading", startedAt: new Date().toISOString(), completedAt: undefined, elapsedMs: 0, alignment: undefined },
+      session: { ...current.session, status: "reading", currentTokenIndex: 0, startedAt: new Date().toISOString(), completedAt: undefined, elapsedMs: 0, alignment: undefined, attemptSnippet: undefined },
     }));
   }, []);
 
@@ -135,7 +154,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reset = useCallback(() => setState(DEFAULT_STATE), []);
-  const value = useMemo(() => ({ state, hydrated, selectStory, startReading, setCurrentToken, setEvaluationMode, beginAlignment, completeReading, confirmOverride, reset }), [beginAlignment, completeReading, confirmOverride, hydrated, reset, selectStory, setCurrentToken, setEvaluationMode, startReading, state]);
+  const value = useMemo(() => ({ state, hydrated, selectStory, prepareReadingAttempt, startReading, setCurrentToken, setEvaluationMode, beginAlignment, completeReading, confirmOverride, reset }), [beginAlignment, completeReading, confirmOverride, hydrated, prepareReadingAttempt, reset, selectStory, setCurrentToken, setEvaluationMode, startReading, state]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

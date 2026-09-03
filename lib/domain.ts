@@ -1,6 +1,6 @@
 /** Shared Reader Leader contracts for stories, speech alignment, educator review, and the hesitation state machine. */
 
-export type StoryId = "fat-cat" | "big-dog" | "sun-bun" | "pig-in-mud" | "red-hen" | "frog-log" | "bears-hat" | "ship-trip" | "fox-box" | "brave-knight";
+export type StoryId = "fat-cat" | "big-dog" | "sun-bun" | "pig-in-mud" | "red-hen" | "frog-log" | "bears-hat" | "ship-trip" | "fox-box" | "brave-knight" | "lost-shield" | "kings-ring";
 export type BookBandId = "pink" | "red" | "yellow" | "green";
 export type AccentProfile = "en-GB" | "en-IE";
 export type EvaluationMode = "standard-rp" | "regional-restraint";

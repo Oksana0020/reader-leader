@@ -2,6 +2,8 @@
 
 Reader Leader is a Next.js App Router walking skeleton for a UK and Hiberno-English early-reading fluency tutor. It implements the single-path student and educator loop: story selection, memory-safe live listening, VAD-driven word progression, timed hesitation support, celebration, a generated running record with real attempt playback, and an auditable two-click teacher override.
 
+The story library includes a complete three-card Level 5 Green Band: The Brave Knight, The Lost Shield, and King’s Ring. Every fresh read attempt starts at token index zero, including direct `/read` entry, microphone start, story changes, and Read Again. Educator history and override success messaging are scoped to the displayed session, so introductory stories remain neutral and do not inherit Brave Knight evidence.
+
 ## Foundation Stack
 
 | Area | Choice |

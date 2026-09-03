@@ -4,6 +4,7 @@ import type { HesitationEvent, HesitationMachine } from "@/lib/domain";
 export const HESITATION_THRESHOLD_MS = 3_000;
 export const PROMPT_THRESHOLD_MS = 5_000;
 export const FINAL_TOKEN_AUTO_FINISH_PAUSE_MS = 900;
+export const INITIAL_TOKEN_INDEX = 0;
 
 export function advanceTokenIndex(currentIndex: number, tokenCount: number): number {
   return Math.min(Math.max(tokenCount - 1, 0), currentIndex + 1);

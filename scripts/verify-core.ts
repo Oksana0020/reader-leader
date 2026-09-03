@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   FINAL_TOKEN_AUTO_FINISH_PAUSE_MS,
   HESITATION_THRESHOLD_MS,
+  INITIAL_TOKEN_INDEX,
   INITIAL_HESITATION_MACHINE,
   PROMPT_THRESHOLD_MS,
   advanceTokenIndex,
@@ -23,6 +24,7 @@ assert.equal(state.phase, "speaking");
 assert.equal(state.silenceMs, 0);
 state = hesitationReducer(state, { type: "SILENCE", atMs: PROMPT_THRESHOLD_MS + 200 });
 assert.equal(state.phase, "listening");
+assert.equal(INITIAL_TOKEN_INDEX, 0);
 
 assert.equal(advanceTokenIndex(0, 14), 1);
 assert.equal(advanceTokenIndex(13, 14), 13);

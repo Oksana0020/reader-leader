@@ -27,6 +27,8 @@ export const STORIES: Story[] = [
   { id: "ship-trip", title: "Ship Trip", level: 3, band: "yellow", bandLabel: "Level 3: Yellow Band", focus: "Consonant Blends", targetText: "The ship went on a long trip.", imageUrl: STORY_ASSETS.shipTrip },
   { id: "fox-box", title: "Fox Box", level: 3, band: "yellow", bandLabel: "Level 3: Yellow Band", focus: "Consonant Blends", targetText: "The quick fox hid in a box.", imageUrl: STORY_ASSETS.foxBox },
   { id: "brave-knight", title: "The Brave Knight", level: 5, band: "green", bandLabel: "Level 5: Green Band", focus: "Trigraphs & Silent Letters", targetText: "The brave knight went out into the cold night to find his lost horse." },
+  { id: "lost-shield", title: "The Lost Shield", level: 5, band: "green", bandLabel: "Level 5: Green Band", focus: "Trigraphs & Silent Letters", targetText: "The knight searched the castle for his lost shield." },
+  { id: "kings-ring", title: "King's Ring", level: 5, band: "green", bandLabel: "Level 5: Green Band", focus: "Trigraphs & Silent Letters", targetText: "The king lost his bright ring in the long grass." },
 ];
 
 export const ACCEPTED_REGIONAL_VARIANTS = [{

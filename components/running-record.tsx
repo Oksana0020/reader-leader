@@ -26,6 +26,7 @@ export function RunningRecord({ alignment }: { alignment: AlignmentResponse }) {
   const openToken = alignment.tokens.find((token) => token.id === openTokenId) ?? null;
   const accepted = openToken?.status === "accepted-teacher-override";
   const snippetDataUri = state.session.attemptSnippet?.dataUri;
+  const activeSessionHasOverride = state.overrides.some((event) => event.sessionId === alignment.sessionId);
 
   const releasePlayback = useCallback(() => {
     if (audioRef.current) {
@@ -133,7 +134,7 @@ export function RunningRecord({ alignment }: { alignment: AlignmentResponse }) {
         </div>
       )}
 
-      {state.overrides.length > 0 && (
+      {activeSessionHasOverride && (
         <div className="mt-8 flex items-start gap-3 rounded-2xl bg-emerald-50 p-4 text-emerald-900" role="status">
           <CheckCircle2 className="mt-0.5 size-6 shrink-0" />
           <p><strong>Teacher override saved.</strong> The latest audit entry is stored locally with the original and accepted classifications.</p>

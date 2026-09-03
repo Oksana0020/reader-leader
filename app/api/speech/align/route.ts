@@ -6,7 +6,7 @@ import { calculateReadingMetrics } from "@/lib/reading-metrics";
 
 const requestSchema = z.object({
   sessionId: z.string().min(1),
-  storyId: z.enum(["fat-cat", "big-dog", "sun-bun", "pig-in-mud", "red-hen", "frog-log", "bears-hat", "ship-trip", "fox-box", "brave-knight"]),
+  storyId: z.enum(["fat-cat", "big-dog", "sun-bun", "pig-in-mud", "red-hen", "frog-log", "bears-hat", "ship-trip", "fox-box", "brave-knight", "lost-shield", "kings-ring"]),
   targetText: z.string().min(1),
   localeProfile: z.enum(["en-GB", "en-IE"]),
   evaluationMode: z.enum(["standard-rp", "regional-restraint"]),

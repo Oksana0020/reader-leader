@@ -23,3 +23,13 @@
 - [x] Revoke temporary object URLs and release all audio graph resources on finish, reset, and unmount.
 - [x] Add the Standard RP versus Hiberno-English/Northern Irish evaluation toggle and distinct alignment outcomes.
 - [x] Verify strict TypeScript, focused assertions, production build, HTTP 200, hydration, and both evaluation paths.
+
+## Green Band Completion and Session Isolation
+
+- [x] Add The Lost Shield and King’s Ring to the typed Level 5 catalogue without changing The Brave Knight contract.
+- [x] Render three consistent, interactive Green Band cards with friendly inline vector artwork.
+- [x] Reset the active token and hesitation lifecycle to index 0 on `/read` mount, microphone start, and Read Again.
+- [x] Ensure non-hero stories render neutral 100% records with story-appropriate assessment history.
+- [x] Show the teacher-override success banner only when the active session has its own confirmed override.
+- [x] Regression-test Brave Knight alignment, `knight` popover, retained audio playback, and two-click override.
+- [x] Run strict checks, a clean production build, HTTP 200 verification, and restart `0.0.0.0:3000`.

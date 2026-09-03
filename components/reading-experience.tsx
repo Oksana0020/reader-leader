@@ -8,7 +8,7 @@ import { StudentTopBar } from "@/components/student-top-bar";
 import { useReaderSession } from "@/app/providers";
 import { useHesitationFSM } from "@/hooks/use-hesitation-fsm";
 import { alignSpeech } from "@/lib/speech-alignment-client";
-import { advanceTokenIndex, shouldAutoFinishReading } from "@/lib/hesitation-fsm";
+import { advanceTokenIndex, INITIAL_TOKEN_INDEX, shouldAutoFinishReading } from "@/lib/hesitation-fsm";
 import { ATTEMPT_SNIPPET_DURATION_MS, blobToAudioDataUri } from "@/lib/audio-data";
 
 function stripPunctuation(token: string) {
@@ -28,7 +28,7 @@ function phoneticCue(token: string): string {
 
 export function ReadingExperience() {
   const router = useRouter();
-  const { state, startReading, setCurrentToken, setEvaluationMode, beginAlignment, completeReading } = useReaderSession();
+  const { state, hydrated, prepareReadingAttempt, startReading, setCurrentToken, setEvaluationMode, beginAlignment, completeReading } = useReaderSession();
   const audio = useHesitationFSM();
   const [alignmentError, setAlignmentError] = useState<string | null>(null);
   const handledSpeechStartRef = useRef(0);
@@ -36,14 +36,34 @@ export function ReadingExperience() {
   const finalTokenSpokenRef = useRef(false);
   const finishingRef = useRef(false);
   const snippetRequestedRef = useRef(false);
+  const preparedStoryRef = useRef<string | null>(null);
   const story = state.session.storySnapshot;
   const words = story.targetText.split(/\s+/);
   const currentIndex = Math.min(state.session.currentTokenIndex, words.length - 1);
   const baselineInterrupt = state.session.evaluationMode === "standard-rp" && stripPunctuation(words[currentIndex]) === "horse" && audio.isActive;
   const showHighlight = audio.phase === "hesitating" || audio.phase === "prompting" || baselineInterrupt;
-  const busy = audio.phase === "requesting-permission" || audio.phase === "finishing" || state.session.status === "aligning";
+  const busy = !hydrated || audio.phase === "requesting-permission" || audio.phase === "finishing" || state.session.status === "aligning";
+
+  const resetAttemptRefs = useCallback(() => {
+    handledSpeechStartRef.current = 0;
+    handledSpeechEndRef.current = 0;
+    finalTokenSpokenRef.current = false;
+    finishingRef.current = false;
+    snippetRequestedRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated || preparedStoryRef.current === story.id) return;
+    preparedStoryRef.current = story.id;
+    audio.cancel();
+    resetAttemptRefs();
+    prepareReadingAttempt();
+  }, [audio, hydrated, prepareReadingAttempt, resetAttemptRefs, story.id]);
 
   async function startMicrophone() {
+    setCurrentToken(INITIAL_TOKEN_INDEX);
+    audio.cancel();
+    resetAttemptRefs();
     const started = await audio.start();
     if (started) startReading();
   }
