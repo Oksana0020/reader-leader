@@ -42,6 +42,8 @@ The microphone hook owns its complete resource graph. Starting creates one strea
 
 The analyser ignores all startup energy for 300 ms after microphone activation and then requires 90 ms of sustained above-threshold speech at an RMS threshold of 0.028 before emitting a speech-start edge. This protects the first token from device-access clicks and brief ambient transients while allowing natural conversational reading without shouting or exaggerated pacing.
 
+The `knight` evidence clip is decoded from the complete session recording using the detected token onset: 400 ms of pre-roll plus 1,600 ms after onset, yielding an exact two-second WAV for reliable educator playback. In Standard RP comparison mode, the simulated `horse` anomaly waits for 1.8 seconds of completion silence before interrupting; regional-restraint semantics and the 0.0% false-correction outcome are unchanged.
+
 ## Phase 4 Pitch Demonstration
 
 Live VAD utterance edges advance the active token. A three-second pause highlights that token in amber, and a five-second pause reveals its phonetic scaffold without score impact. The regional mode accepts rhotic `horse` as `accepted-regional-variant`, stays silent, and reports a 0.0% false-correction rate. Standard RP comparison mode deliberately simulates a baseline substitution and amber interruption, yielding a measurable false-correction rate for the same reading.

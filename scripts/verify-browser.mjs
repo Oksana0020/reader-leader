@@ -167,7 +167,7 @@ try {
   assert.equal(regional.evaluationMode, "regional-restraint");
   assert.equal(regional.alignment.metrics.falseCorrectionRate, 0);
   assert.equal(regional.alignment.tokens.find((token) => token.token.startsWith("horse")).status, "accepted-regional-variant");
-  assert.match(regional.attemptSnippet.dataUri, /^data:audio\//);
+  assert.match(regional.attemptSnippet.dataUri, /^data:audio\/wav/);
   assert.equal(regional.attemptSnippet.durationMs, 2_000);
 
   await client.evaluate(`[...document.querySelectorAll('a')].find((anchor) => anchor.textContent?.includes('View Educator Record'))?.click()`);

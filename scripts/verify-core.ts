@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  BASELINE_ASR_PATIENCE_MS,
   FINAL_TOKEN_AUTO_FINISH_PAUSE_MS,
   HESITATION_THRESHOLD_MS,
   INITIAL_TOKEN_INDEX,
@@ -8,7 +9,9 @@ import {
   advanceTokenIndex,
   hesitationReducer,
   shouldAutoFinishReading,
+  shouldShowBaselineInterrupt,
 } from "../lib/hesitation-fsm.ts";
+import { createAttemptSnippetWindow } from "../lib/audio-data.ts";
 import { calculateReadingMetrics } from "../lib/reading-metrics.ts";
 import type { AlignmentStatus, TokenAlignment } from "../lib/domain.ts";
 
@@ -30,6 +33,10 @@ assert.equal(advanceTokenIndex(0, 14), 1);
 assert.equal(advanceTokenIndex(13, 14), 13);
 assert.equal(shouldAutoFinishReading(13, 14, true, FINAL_TOKEN_AUTO_FINISH_PAUSE_MS - 1), false);
 assert.equal(shouldAutoFinishReading(13, 14, true, FINAL_TOKEN_AUTO_FINISH_PAUSE_MS), true);
+assert.deepEqual(createAttemptSnippetWindow(2_750), { startMs: 2_350, endMs: 4_350, durationMs: 2_000 });
+assert.equal(shouldShowBaselineInterrupt("standard-rp", "horse.", true, BASELINE_ASR_PATIENCE_MS - 1), false);
+assert.equal(shouldShowBaselineInterrupt("standard-rp", "horse.", true, BASELINE_ASR_PATIENCE_MS), true);
+assert.equal(shouldShowBaselineInterrupt("regional-restraint", "horse.", true, BASELINE_ASR_PATIENCE_MS), false);
 
 const statuses: AlignmentStatus[] = ["correct", "substitution", "accepted-teacher-override"];
 assert.notEqual(statuses[2], "accepted-regional-variant");

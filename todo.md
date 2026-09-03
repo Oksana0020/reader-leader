@@ -48,3 +48,11 @@
 - [x] Reduce the active RMS threshold by approximately 20% and shorten sustained-speech qualification to 90 ms.
 - [x] Confirm startup noise still cannot advance token 0 and natural-paced speech still completes the Brave Knight regression.
 - [x] Run strict checks, a clean production build, HTTP 200 verification, and restart `0.0.0.0:3000`.
+
+## Evidence Pre-Roll and Baseline Patience
+
+- [x] Capture the `knight` evidence window from 400 ms before token start through 1,600 ms after token start.
+- [x] Keep the persisted attempt duration at exactly two seconds and preserve playback/cleanup behavior.
+- [x] Delay the Baseline RP `horse` substitution interrupt until 1.8 seconds of completion patience.
+- [x] Preserve the story grid, UI shells, regional 0.0% outcome, and two-click teacher override.
+- [x] Run strict checks, timing regression assertions, a clean production build, HTTP 200, and restart `0.0.0.0:3000`.

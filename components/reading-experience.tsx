@@ -8,8 +8,8 @@ import { StudentTopBar } from "@/components/student-top-bar";
 import { useReaderSession } from "@/app/providers";
 import { useHesitationFSM } from "@/hooks/use-hesitation-fsm";
 import { alignSpeech } from "@/lib/speech-alignment-client";
-import { advanceTokenIndex, INITIAL_TOKEN_INDEX, shouldAutoFinishReading } from "@/lib/hesitation-fsm";
-import { ATTEMPT_SNIPPET_DURATION_MS, blobToAudioDataUri } from "@/lib/audio-data";
+import { advanceTokenIndex, INITIAL_TOKEN_INDEX, shouldAutoFinishReading, shouldShowBaselineInterrupt } from "@/lib/hesitation-fsm";
+import { ATTEMPT_SNIPPET_DURATION_MS, ATTEMPT_SNIPPET_PRE_ROLL_MS, blobToAudioDataUri } from "@/lib/audio-data";
 
 function stripPunctuation(token: string) {
   return token.toLowerCase().replace(/[^a-z']/g, "");
@@ -40,7 +40,7 @@ export function ReadingExperience() {
   const story = state.session.storySnapshot;
   const words = story.targetText.split(/\s+/);
   const currentIndex = Math.min(state.session.currentTokenIndex, words.length - 1);
-  const baselineInterrupt = state.session.evaluationMode === "standard-rp" && stripPunctuation(words[currentIndex]) === "horse" && audio.isActive;
+  const baselineInterrupt = shouldShowBaselineInterrupt(state.session.evaluationMode, words[currentIndex], audio.isActive, audio.silenceMs);
   const showHighlight = audio.phase === "hesitating" || audio.phase === "prompting" || baselineInterrupt;
   const busy = !hydrated || audio.phase === "requesting-permission" || audio.phase === "finishing" || state.session.status === "aligning";
 
@@ -107,7 +107,7 @@ export function ReadingExperience() {
     handledSpeechStartRef.current = audio.speechStartedEpoch;
     if (stripPunctuation(words[currentIndex]) === "knight" && !snippetRequestedRef.current) {
       snippetRequestedRef.current = true;
-      void audio.captureSnippet(ATTEMPT_SNIPPET_DURATION_MS);
+      audio.captureSnippet(audio.speechStartedAtMs, ATTEMPT_SNIPPET_DURATION_MS, ATTEMPT_SNIPPET_PRE_ROLL_MS);
     }
     if (currentIndex === words.length - 1) finalTokenSpokenRef.current = false;
   }, [audio, currentIndex, words]);
