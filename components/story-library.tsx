@@ -20,7 +20,7 @@ function StoryCard({ story, focusColour }: { story: Story; focusColour: string }
   const { selectStory } = useReaderSession();
 
   function openStory() {
-    selectStory(story.id);
+    selectStory(story);
     router.push("/read");
   }
 

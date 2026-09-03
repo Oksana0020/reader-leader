@@ -2,15 +2,15 @@
 
 /* Reference-led rule: shared state must remain invisible to the child-facing composition and preserve one calm action at a time. */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { DEFAULT_STATE, getStory, getStorySnapshot } from "@/lib/seed";
+import { DEFAULT_STATE, getStorySnapshot } from "@/lib/seed";
 import { loadReaderLeaderState, saveReaderLeaderState } from "@/lib/session-storage";
 import { recalculateAlignmentMetrics } from "@/lib/reading-metrics";
-import type { AlignmentResponse, ReaderLeaderState, StoryId } from "@/lib/domain";
+import type { AlignmentResponse, ReaderLeaderState, Story } from "@/lib/domain";
 
 interface SessionContextValue {
   state: ReaderLeaderState;
   hydrated: boolean;
-  selectStory: (storyId: StoryId) => void;
+  selectStory: (story: Story) => void;
   startReading: () => void;
   setCurrentToken: (tokenIndex: number) => void;
   beginAlignment: (elapsedMs: number) => void;
@@ -41,15 +41,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (hydrated) saveReaderLeaderState(window.localStorage, state);
   }, [hydrated, state]);
 
-  const selectStory = useCallback((storyId: StoryId) => {
-    const story = getStory(storyId);
+  const selectStory = useCallback((story: Story) => {
     setState((current) => ({
       ...current,
-      selectedStoryId: storyId,
+      selectedStoryId: story.id,
       session: {
         id: `session-${Date.now()}`,
         studentId: current.session.studentId,
-        storyId,
+        storyId: story.id,
         storySnapshot: getStorySnapshot(story),
         localeProfile: current.session.localeProfile,
         status: "ready",
