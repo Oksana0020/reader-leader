@@ -4,9 +4,9 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { hesitationReducer, INITIAL_HESITATION_MACHINE } from "@/lib/hesitation-fsm";
 
-const VOICE_RMS_THRESHOLD = 0.035;
+const VOICE_RMS_THRESHOLD = 0.028;
 const VAD_WARMUP_MS = 300;
-const SUSTAINED_SPEECH_MS = 160;
+const SUSTAINED_SPEECH_MS = 90;
 const SPEECH_RELEASE_MS = 180;
 const UI_SAMPLE_INTERVAL_MS = 100;
 

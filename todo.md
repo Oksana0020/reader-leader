@@ -41,3 +41,10 @@
 - [x] Require genuine sustained speech energy before emitting a speech-start edge or advancing the active token.
 - [x] Preserve the Brave Knight alignment, two-second snippet, two-click override, and clean Reading Canvas UI.
 - [x] Run focused assertions, the production Chromium regression, a clean build, HTTP 200, and restart `0.0.0.0:3000`.
+
+## Natural Reading VAD Calibration
+
+- [x] Keep the existing 300 ms microphone startup-noise gate unchanged.
+- [x] Reduce the active RMS threshold by approximately 20% and shorten sustained-speech qualification to 90 ms.
+- [x] Confirm startup noise still cannot advance token 0 and natural-paced speech still completes the Brave Knight regression.
+- [x] Run strict checks, a clean production build, HTTP 200 verification, and restart `0.0.0.0:3000`.
