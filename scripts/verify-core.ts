@@ -15,6 +15,11 @@ import { createAttemptSnippetWindow } from "../lib/audio-data.ts";
 import { calculateReadingMetrics } from "../lib/reading-metrics.ts";
 import type { AlignmentStatus, TokenAlignment } from "../lib/domain.ts";
 
+assert.equal(HESITATION_THRESHOLD_MS, 2_000);
+assert.equal(PROMPT_THRESHOLD_MS, 3_800);
+assert.equal(BASELINE_ASR_PATIENCE_MS, 800);
+assert.equal(FINAL_TOKEN_AUTO_FINISH_PAUSE_MS, 2_400);
+
 let state = hesitationReducer(INITIAL_HESITATION_MACHINE, { type: "PERMISSION_GRANTED", atMs: 0 });
 state = hesitationReducer(state, { type: "SILENCE", atMs: HESITATION_THRESHOLD_MS - 1 });
 assert.equal(state.phase, "listening");

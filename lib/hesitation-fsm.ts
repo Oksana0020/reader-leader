@@ -1,10 +1,13 @@
 /** Student restraint rule: silence offers support at 3s and 5s without creating a pronunciation penalty. */
 import type { EvaluationMode, HesitationEvent, HesitationMachine } from "@/lib/domain";
 
-export const HESITATION_THRESHOLD_MS = 3_000;
-export const PROMPT_THRESHOLD_MS = 5_000;
-export const FINAL_TOKEN_AUTO_FINISH_PAUSE_MS = 900;
-export const BASELINE_ASR_PATIENCE_MS = 1_800;
+// Fast-paced demo thresholds for stage presentation
+export const HESITATION_THRESHOLD_MS = 2_000;          // Turns amber at 2.0s of silence (down from 3.0s)
+export const PROMPT_THRESHOLD_MS = 3_800;              // Reveals phonetic cue at 3.8s total (down from 5.0s)
+
+// Baseline ASR vs Final Navigation Sequencing
+export const BASELINE_ASR_PATIENCE_MS = 800;           // Shows baseline error after 800ms on "horse"
+export const FINAL_TOKEN_AUTO_FINISH_PAUSE_MS = 2_400; // Holds canvas for 2.4s so audience sees the baseline pill
 export const INITIAL_TOKEN_INDEX = 0;
 
 export function shouldShowBaselineInterrupt(evaluationMode: EvaluationMode, token: string, isActive: boolean, silenceMs: number): boolean {

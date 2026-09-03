@@ -56,3 +56,10 @@
 - [x] Delay the Baseline RP `horse` substitution interrupt until 1.8 seconds of completion patience.
 - [x] Preserve the story grid, UI shells, regional 0.0% outcome, and two-click teacher override.
 - [x] Run strict checks, timing regression assertions, a clean production build, HTTP 200, and restart `0.0.0.0:3000`.
+
+## Stage Demo Timing Thresholds
+
+- [x] Set hesitation amber feedback to 2,000 ms and the phonetic prompt to 3,800 ms.
+- [x] Set Baseline RP patience to 800 ms and final-token auto-finish hold to 2,400 ms.
+- [x] Update focused timing assertions and preserve all unrelated audio, alignment, and educator behavior.
+- [x] Run strict checks, a clean production build, HTTP 200 verification, and restart `0.0.0.0:3000`.
