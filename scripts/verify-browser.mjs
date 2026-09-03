@@ -10,7 +10,7 @@ const PROFILE_PATH = `/tmp/reader-leader-cdp-profile-${process.pid}`;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function createPatternedWav(path, sampleRate = 44_100) {
-  const tones = [[0.4, 0.7], [1.5, 1.8], [2.6, 2.9]];
+  const tones = [[0.05, 0.2], [0.55, 0.9], [1.65, 1.95], [2.75, 3.05]];
   for (let index = 0; index < 11; index += 1) {
     const start = 8.6 + index * 0.75;
     tones.push([start, start + 0.3]);
@@ -154,6 +154,9 @@ try {
   assert.equal(await client.evaluate("document.querySelector('button[aria-pressed=\"true\"]')?.textContent.includes('Agent Restraint')"), true);
   await client.evaluate("document.querySelector('button[aria-label=\"Start microphone\"]')?.click()");
   await waitForValue(client.evaluate, "document.querySelector('button[aria-label=\"Stop recording and finish\"]') !== null");
+  await sleep(350);
+  const warmupEnvelope = JSON.parse(await client.evaluate("localStorage.getItem('reader-leader-session-v2')"));
+  assert.equal(warmupEnvelope.state.session.currentTokenIndex, 0, "Startup noise must not advance the first word.");
   await waitForValue(client.evaluate, `[...document.querySelectorAll('span')].some((span) => span.textContent === 'went' && span.className.includes('E5A93C'))`, 8_000);
   await waitForValue(client.evaluate, "document.body.textContent.includes('w · e · n · t')", 10_000);
   await waitForValue(client.evaluate, "location.pathname === '/celebrate'", 24_000);

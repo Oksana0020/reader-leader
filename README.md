@@ -40,6 +40,8 @@ The alignment mock treats **“knight” pronounced as `/n-aɪ-t/` as correct**,
 
 The microphone hook owns its complete resource graph. Starting creates one stream, source, analyser, animation-frame loop, optional session recorder, bounded two-second attempt recorder, and audio context. Finishing, cancellation, errors, and component unmount stop every media track, cancel the frame loop, disconnect source and analyser nodes, stop active recorders, and close the `AudioContext` idempotently. The retained `knight` segment is encoded as a local audio data URI; educator playback uses a temporary object URL that is revoked on completion, session reset/change, or unmount.
 
+The analyser ignores all startup energy for 300 ms after microphone activation and then requires 160 ms of sustained above-threshold speech before emitting a speech-start edge. This prevents device-access clicks and brief ambient transients from advancing the first token while retaining the existing release timing and hesitation behavior.
+
 ## Phase 4 Pitch Demonstration
 
 Live VAD utterance edges advance the active token. A three-second pause highlights that token in amber, and a five-second pause reveals its phonetic scaffold without score impact. The regional mode accepts rhotic `horse` as `accepted-regional-variant`, stays silent, and reports a 0.0% false-correction rate. Standard RP comparison mode deliberately simulates a baseline substitution and amber interruption, yielding a measurable false-correction rate for the same reading.

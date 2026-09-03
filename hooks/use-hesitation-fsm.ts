@@ -5,6 +5,8 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { hesitationReducer, INITIAL_HESITATION_MACHINE } from "@/lib/hesitation-fsm";
 
 const VOICE_RMS_THRESHOLD = 0.035;
+const VAD_WARMUP_MS = 300;
+const SUSTAINED_SPEECH_MS = 160;
 const SPEECH_RELEASE_MS = 180;
 const UI_SAMPLE_INTERVAL_MS = 100;
 
@@ -39,6 +41,7 @@ export function useHesitationFSM() {
   const frameRef = useRef<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
   const lastVoiceAtRef = useRef<number | null>(null);
+  const voiceCandidateStartedAtRef = useRef<number | null>(null);
   const lastUiDispatchAtRef = useRef(0);
   const speakingRef = useRef(false);
 
@@ -81,6 +84,7 @@ export function useHesitationFSM() {
     if (audioContext && audioContext.state !== "closed") void audioContext.close().catch(() => undefined);
 
     lastVoiceAtRef.current = null;
+    voiceCandidateStartedAtRef.current = null;
     lastUiDispatchAtRef.current = 0;
     speakingRef.current = false;
   }, [stopSnippetCapture]);
@@ -159,6 +163,7 @@ export function useHesitationFSM() {
       sourceRef.current = source;
       startedAtRef.current = performance.now();
       lastVoiceAtRef.current = null;
+      voiceCandidateStartedAtRef.current = null;
 
       if (typeof MediaRecorder !== "undefined") {
         const preferredType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
@@ -185,7 +190,25 @@ export function useHesitationFSM() {
           energy += normalised * normalised;
         }
         const rms = Math.sqrt(energy / samples.length);
-        if (rms >= VOICE_RMS_THRESHOLD) lastVoiceAtRef.current = now;
+        const startedAt = startedAtRef.current;
+        if (startedAt !== null && now - startedAt < VAD_WARMUP_MS) {
+          lastVoiceAtRef.current = null;
+          voiceCandidateStartedAtRef.current = null;
+          speakingRef.current = false;
+          frameRef.current = requestAnimationFrame(sample);
+          return;
+        }
+
+        if (rms >= VOICE_RMS_THRESHOLD) {
+          if (speakingRef.current) {
+            lastVoiceAtRef.current = now;
+          } else {
+            voiceCandidateStartedAtRef.current ??= now;
+            if (now - voiceCandidateStartedAtRef.current >= SUSTAINED_SPEECH_MS) lastVoiceAtRef.current = now;
+          }
+        } else {
+          voiceCandidateStartedAtRef.current = null;
+        }
 
         if (now - lastUiDispatchAtRef.current >= UI_SAMPLE_INTERVAL_MS) {
           lastUiDispatchAtRef.current = now;

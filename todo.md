@@ -33,3 +33,11 @@
 - [x] Show the teacher-override success banner only when the active session has its own confirmed override.
 - [x] Regression-test Brave Knight alignment, `knight` popover, retained audio playback, and two-click override.
 - [x] Run strict checks, a clean production build, HTTP 200 verification, and restart `0.0.0.0:3000`.
+
+## Reading Counter Start Gate
+
+- [x] Confirm the current `/read` mount and microphone-start reset paths still force token index 0.
+- [x] Ignore all VAD energy during the first 300 ms after microphone activation.
+- [x] Require genuine sustained speech energy before emitting a speech-start edge or advancing the active token.
+- [x] Preserve the Brave Knight alignment, two-second snippet, two-click override, and clean Reading Canvas UI.
+- [x] Run focused assertions, the production Chromium regression, a clean build, HTTP 200, and restart `0.0.0.0:3000`.
