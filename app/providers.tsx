@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { DEFAULT_STATE, getStorySnapshot } from "@/lib/seed";
 import { loadReaderLeaderState, saveReaderLeaderState } from "@/lib/session-storage";
 import { recalculateAlignmentMetrics } from "@/lib/reading-metrics";
-import type { AlignmentResponse, ReaderLeaderState, Story } from "@/lib/domain";
+import type { AlignmentResponse, AttemptAudioSnippet, EvaluationMode, ReaderLeaderState, Story } from "@/lib/domain";
 
 interface SessionContextValue {
   state: ReaderLeaderState;
@@ -13,8 +13,9 @@ interface SessionContextValue {
   selectStory: (story: Story) => void;
   startReading: () => void;
   setCurrentToken: (tokenIndex: number) => void;
+  setEvaluationMode: (mode: EvaluationMode) => void;
   beginAlignment: (elapsedMs: number) => void;
-  completeReading: (alignment: AlignmentResponse, elapsedMs: number) => void;
+  completeReading: (alignment: AlignmentResponse, elapsedMs: number, attemptSnippet?: AttemptAudioSnippet) => void;
   confirmOverride: (tokenId: string, reason: string) => void;
   reset: () => void;
 }
@@ -50,11 +51,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         studentId: current.session.studentId,
         storyId: story.id,
         storySnapshot: getStorySnapshot(story),
-        localeProfile: current.session.localeProfile,
+        localeProfile: current.session.evaluationMode === "regional-restraint" ? "en-IE" : "en-GB",
+        evaluationMode: current.session.evaluationMode,
         status: "ready",
-        currentTokenIndex: Math.min(2, story.targetText.split(/\s+/).length - 1),
+        currentTokenIndex: 0,
         elapsedMs: 0,
         alignment: undefined,
+        attemptSnippet: undefined,
         earnedBadges: [],
       },
     }));
@@ -71,17 +74,29 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState((current) => ({ ...current, session: { ...current.session, currentTokenIndex: Math.max(0, tokenIndex) } }));
   }, []);
 
+  const setEvaluationMode = useCallback((mode: EvaluationMode) => {
+    setState((current) => ({
+      ...current,
+      session: {
+        ...current.session,
+        evaluationMode: mode,
+        localeProfile: mode === "regional-restraint" ? "en-IE" : "en-GB",
+      },
+    }));
+  }, []);
+
   const beginAlignment = useCallback((elapsedMs: number) => {
     setState((current) => ({ ...current, session: { ...current.session, status: "aligning", elapsedMs } }));
   }, []);
 
-  const completeReading = useCallback((alignment: AlignmentResponse, elapsedMs: number) => {
+  const completeReading = useCallback((alignment: AlignmentResponse, elapsedMs: number, attemptSnippet?: AttemptAudioSnippet) => {
     setState((current) => ({
       ...current,
       session: {
         ...current.session,
         status: "complete",
         alignment,
+        attemptSnippet,
         elapsedMs,
         completedAt: new Date().toISOString(),
         earnedBadges: ["great-listening", "phonics-champion", "speed-reader"],
@@ -120,7 +135,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reset = useCallback(() => setState(DEFAULT_STATE), []);
-  const value = useMemo(() => ({ state, hydrated, selectStory, startReading, setCurrentToken, beginAlignment, completeReading, confirmOverride, reset }), [beginAlignment, completeReading, confirmOverride, hydrated, reset, selectStory, setCurrentToken, startReading, state]);
+  const value = useMemo(() => ({ state, hydrated, selectStory, startReading, setCurrentToken, setEvaluationMode, beginAlignment, completeReading, confirmOverride, reset }), [beginAlignment, completeReading, confirmOverride, hydrated, reset, selectStory, setCurrentToken, setEvaluationMode, startReading, state]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

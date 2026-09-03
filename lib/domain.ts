@@ -3,6 +3,7 @@
 export type StoryId = "fat-cat" | "big-dog" | "sun-bun" | "pig-in-mud" | "red-hen" | "frog-log" | "bears-hat" | "ship-trip" | "fox-box" | "brave-knight";
 export type BookBandId = "pink" | "red" | "yellow" | "green";
 export type AccentProfile = "en-GB" | "en-IE";
+export type EvaluationMode = "standard-rp" | "regional-restraint";
 
 export interface Story {
   id: StoryId;
@@ -32,15 +33,30 @@ export interface TokenAlignment {
   endsAtMs?: number;
   scoreImpact: boolean;
   cueRecommendation?: string;
+  falseCorrection?: boolean;
 }
 
-export interface ReadingMetrics { accuracyRate: number; wcpm: number; elapsedSeconds: number; }
+export interface ReadingMetrics {
+  accuracyRate: number;
+  wcpm: number;
+  elapsedSeconds: number;
+  falseCorrectionRate: number;
+}
+
+export interface AttemptAudioSnippet {
+  token: string;
+  tokenIndex: number;
+  dataUri: string;
+  mimeType: string;
+  durationMs: number;
+}
 
 export interface AlignmentRequest {
   sessionId: string;
   storyId: StoryId;
   targetText: string;
   localeProfile: AccentProfile;
+  evaluationMode: EvaluationMode;
   elapsedMs: number;
   isFinal: boolean;
   currentTokenIndex?: number;
@@ -51,6 +67,7 @@ export interface AlignmentRequest {
 export interface AlignmentResponse {
   sessionId: string;
   localeProfile: AccentProfile;
+  evaluationMode: EvaluationMode;
   restraintApplied: boolean;
   lastConfirmedTokenIndex: number;
   tokens: TokenAlignment[];
@@ -84,10 +101,12 @@ export interface ReadingSession {
   storyId: StoryId;
   storySnapshot: StorySnapshot;
   localeProfile: AccentProfile;
+  evaluationMode: EvaluationMode;
   status: "ready" | "reading" | "aligning" | "complete";
   currentTokenIndex: number;
   elapsedMs: number;
   alignment?: AlignmentResponse;
+  attemptSnippet?: AttemptAudioSnippet;
   earnedBadges: string[];
   startedAt?: string;
   completedAt?: string;

@@ -2,12 +2,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { AlignmentResponse, TokenAlignment } from "@/lib/domain";
+import { calculateReadingMetrics } from "@/lib/reading-metrics";
 
 const requestSchema = z.object({
   sessionId: z.string().min(1),
   storyId: z.enum(["fat-cat", "big-dog", "sun-bun", "pig-in-mud", "red-hen", "frog-log", "bears-hat", "ship-trip", "fox-box", "brave-knight"]),
   targetText: z.string().min(1),
   localeProfile: z.enum(["en-GB", "en-IE"]),
+  evaluationMode: z.enum(["standard-rp", "regional-restraint"]),
   elapsedMs: z.number().nonnegative(),
   isFinal: z.boolean(),
   currentTokenIndex: z.number().int().nonnegative().optional(),
@@ -28,16 +30,23 @@ export async function POST(request: Request) {
       return { id: `${input.sessionId}-${index}`, token, index, status: "review", confidence: 0.86, heardAs: "k-night", phoneticDisplay: "/k-n-aɪ-t/", explanation: "Child sounded out the silent ‘k’ (pronounced as /k-n-aɪ-t/).", scoreImpact: false, cueRecommendation: "Stay neutral while the educator reviews the attempt." };
     }
     if (normalised === "knight") {
-      return { id: `${input.sessionId}-${index}`, token, index, status: "accepted-regional-variant", confidence: 0.99, heardAs: "night", phoneticDisplay: "/n-aɪ-t/", explanation: "Correct reading: the initial ‘k’ is silent.", scoreImpact: false };
+      return { id: `${input.sessionId}-${index}`, token, index, status: input.evaluationMode === "regional-restraint" ? "accepted-regional-variant" : "correct", confidence: 0.99, heardAs: "night", phoneticDisplay: "/n-aɪ-t/", explanation: "Correct reading: the initial ‘k’ is silent.", scoreImpact: false };
+    }
+    if (normalised === "horse" && input.evaluationMode === "regional-restraint") {
+      return { id: `${input.sessionId}-${index}`, token, index, status: "accepted-regional-variant", confidence: 0.97, heardAs: "rhotic horse", phoneticDisplay: "/hɔːrs/", explanation: "Accepted rhotic /r/ in Hiberno-English and Northern Irish speech. Reader Leader stays silent.", scoreImpact: false };
+    }
+    if (normalised === "horse" && input.evaluationMode === "standard-rp") {
+      return { id: `${input.sessionId}-${index}`, token, index, status: "substitution", confidence: 0.72, heardAs: "rhotic horse", phoneticDisplay: "/hɔːrs/", explanation: "Baseline ASR simulated a false correction for the regional rhotic /r/.", scoreImpact: true, falseCorrection: true, cueRecommendation: "Amber interrupt: repeat using the baseline pronunciation model." };
     }
     return { id: `${input.sessionId}-${index}`, token, index, status: "correct", confidence: 0.98, scoreImpact: false };
   });
 
   const response: AlignmentResponse = {
     sessionId: input.sessionId, localeProfile: input.localeProfile,
+    evaluationMode: input.evaluationMode,
     restraintApplied: tokens.some((token) => token.status === "accepted-regional-variant"),
     lastConfirmedTokenIndex: tokens.length - 1, tokens,
-    metrics: { accuracyRate: 100, wcpm: Math.round(words.length / (elapsedSeconds / 60)), elapsedSeconds: Math.round(elapsedSeconds) },
+    metrics: calculateReadingMetrics(tokens, elapsedSeconds),
   };
   return NextResponse.json(response);
 }

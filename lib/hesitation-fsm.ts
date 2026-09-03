@@ -3,6 +3,18 @@ import type { HesitationEvent, HesitationMachine } from "@/lib/domain";
 
 export const HESITATION_THRESHOLD_MS = 3_000;
 export const PROMPT_THRESHOLD_MS = 5_000;
+export const FINAL_TOKEN_AUTO_FINISH_PAUSE_MS = 900;
+
+export function advanceTokenIndex(currentIndex: number, tokenCount: number): number {
+  return Math.min(Math.max(tokenCount - 1, 0), currentIndex + 1);
+}
+
+export function shouldAutoFinishReading(currentIndex: number, tokenCount: number, finalTokenSpoken: boolean, silenceMs: number): boolean {
+  return tokenCount > 0
+    && currentIndex === tokenCount - 1
+    && finalTokenSpoken
+    && silenceMs >= FINAL_TOKEN_AUTO_FINISH_PAUSE_MS;
+}
 
 export const INITIAL_HESITATION_MACHINE: HesitationMachine = {
   phase: "idle",

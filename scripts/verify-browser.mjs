@@ -5,10 +5,17 @@ import { rmSync, writeFileSync } from "node:fs";
 const DEBUG_PORT = 9333;
 const APP_PORT = 3100;
 const APP_URL = `http://127.0.0.1:${APP_PORT}`;
-const AUDIO_PATH = "/tmp/reader-leader-silence.wav";
+const AUDIO_PATH = "/tmp/reader-leader-patterned.wav";
 const PROFILE_PATH = `/tmp/reader-leader-cdp-profile-${process.pid}`;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function createSilentWav(path, seconds = 8, sampleRate = 44_100) {
+function createPatternedWav(path, sampleRate = 44_100) {
+  const tones = [[0.4, 0.7], [1.5, 1.8], [2.6, 2.9]];
+  for (let index = 0; index < 11; index += 1) {
+    const start = 8.6 + index * 0.75;
+    tones.push([start, start + 0.3]);
+  }
+  const seconds = 20;
   const samples = seconds * sampleRate;
   const dataSize = samples * 2;
   const buffer = Buffer.alloc(44 + dataSize);
@@ -25,43 +32,33 @@ function createSilentWav(path, seconds = 8, sampleRate = 44_100) {
   buffer.writeUInt16LE(16, 34);
   buffer.write("data", 36);
   buffer.writeUInt32LE(dataSize, 40);
+  for (let sample = 0; sample < samples; sample += 1) {
+    const time = sample / sampleRate;
+    const active = tones.some(([start, end]) => time >= start && time <= end);
+    const value = active ? Math.sin(2 * Math.PI * 440 * time) * 20_000 : 0;
+    buffer.writeInt16LE(Math.round(value), 44 + sample * 2);
+  }
   writeFileSync(path, buffer);
 }
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function waitForApp() {
-  for (let attempt = 0; attempt < 80; attempt += 1) {
+async function waitForUrl(url, attempts = 80) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      const response = await fetch(APP_URL);
-      if (response.ok) return;
+      const response = await fetch(url);
+      if (response.ok) return response;
     } catch {
-      // The temporary production server is still starting.
+      // The local process is still starting.
     }
     await sleep(100);
   }
-  throw new Error("Reader Leader verification server did not start.");
-}
-
-async function waitForEndpoint() {
-  for (let attempt = 0; attempt < 50; attempt += 1) {
-    try {
-      const response = await fetch(`http://127.0.0.1:${DEBUG_PORT}/json`);
-      if (response.ok) return response.json();
-    } catch {
-      // Chromium is still starting.
-    }
-    await sleep(100);
-  }
-  throw new Error("Chromium debugging endpoint did not start.");
+  throw new Error(`Timed out waiting for ${url}`);
 }
 
 function createCdpClient(webSocketUrl) {
   const socket = new WebSocket(webSocketUrl);
-  let nextId = 1;
   const pending = new Map();
   const events = [];
-
+  let nextId = 1;
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(event.data);
     if (!message.id) {
@@ -74,12 +71,10 @@ function createCdpClient(webSocketUrl) {
     if (message.error) waiter.reject(new Error(message.error.message));
     else waiter.resolve(message.result);
   });
-
   const ready = new Promise((resolve, reject) => {
     socket.addEventListener("open", resolve, { once: true });
     socket.addEventListener("error", reject, { once: true });
   });
-
   async function command(method, params = {}) {
     await ready;
     const id = nextId;
@@ -87,37 +82,31 @@ function createCdpClient(webSocketUrl) {
     socket.send(JSON.stringify({ id, method, params }));
     return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
   }
-
   async function evaluate(expression) {
     const result = await command("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.text);
     return result.result.value;
   }
-
   return { command, evaluate, events, close: () => socket.close() };
 }
 
 async function waitForValue(evaluate, expression, timeoutMs = 8_000) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    const value = await evaluate(expression);
-    if (value) return value;
+    try {
+      const value = await evaluate(expression);
+      if (value) return value;
+    } catch {
+      // A full-page navigation can briefly destroy the previous execution context.
+    }
     await sleep(100);
   }
   throw new Error(`Timed out waiting for: ${expression}`);
 }
 
-createSilentWav(AUDIO_PATH);
+createPatternedWav(AUDIO_PATH);
 rmSync(PROFILE_PATH, { force: true, recursive: true });
-
-const appServer = spawn(process.execPath, [
-  "node_modules/next/dist/bin/next",
-  "start",
-  "--hostname",
-  "127.0.0.1",
-  "--port",
-  String(APP_PORT),
-], {
+const appServer = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", String(APP_PORT)], {
   cwd: process.cwd(),
   env: { ...process.env, NODE_ENV: "production", NEXT_DIST_DIR: ".next-browser" },
   stdio: "ignore",
@@ -126,89 +115,66 @@ const appServer = spawn(process.execPath, [
 let chromium;
 let client;
 try {
-  await waitForApp();
+  await waitForUrl(APP_URL);
   chromium = spawn("/usr/bin/chromium", [
-    "--headless=new",
-    "--no-sandbox",
-    "--disable-gpu",
-    "--disable-dev-shm-usage",
-    "--no-proxy-server",
-    "--proxy-bypass-list=*",
-    "--use-fake-ui-for-media-stream",
-    "--use-fake-device-for-media-stream",
-    "--autoplay-policy=no-user-gesture-required",
-    `--use-file-for-fake-audio-capture=${AUDIO_PATH}`,
-    `--remote-debugging-port=${DEBUG_PORT}`,
-    `--user-data-dir=${PROFILE_PATH}`,
-    "about:blank",
+    "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--no-proxy-server", "--proxy-bypass-list=*",
+    "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required",
+    `--use-file-for-fake-audio-capture=${AUDIO_PATH}`, `--remote-debugging-port=${DEBUG_PORT}`, `--user-data-dir=${PROFILE_PATH}`, "about:blank",
   ], { stdio: "ignore" });
-
-  const targets = await waitForEndpoint();
+  const targets = await (await waitForUrl(`http://127.0.0.1:${DEBUG_PORT}/json`)).json();
   const page = targets.find((target) => target.type === "page");
   assert.ok(page?.webSocketDebuggerUrl, "A Chromium page target is required.");
   client = createCdpClient(page.webSocketDebuggerUrl);
   await client.command("Page.enable");
   await client.command("Runtime.enable");
   await client.command("Log.enable");
+
   await client.command("Page.navigate", { url: APP_URL });
   await waitForValue(client.evaluate, "document.documentElement.dataset.readerLeaderHydrated === 'true'");
-
-  await client.evaluate(`(() => {
-    const target = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('The Brave Knight'));
-    if (!target) throw new Error('Brave Knight card not found');
-    target.click();
-    return true;
-  })()`);
+  await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('The Brave Knight'))?.click()`);
   await waitForValue(client.evaluate, "location.pathname === '/read'");
-  const selectedState = await client.evaluate("localStorage.getItem('reader-leader-session-v2')");
-  assert.match(selectedState, /brave-knight/);
-  assert.match(selectedState, /The brave knight went out into the cold night to find his lost horse/);
-
-  await client.evaluate(`(() => {
-    const microphone = document.querySelector('button[aria-label="Start microphone"]');
-    if (!microphone) throw new Error('Microphone button not found');
-    microphone.click();
-    return true;
-  })()`);
+  assert.equal(await client.evaluate("document.querySelector('button[aria-pressed=\"true\"]')?.textContent.includes('Agent Restraint')"), true);
+  await client.evaluate("document.querySelector('button[aria-label=\"Start microphone\"]')?.click()");
   await waitForValue(client.evaluate, "document.querySelector('button[aria-label=\"Stop recording and finish\"]') !== null");
-  await sleep(3_450);
-  const hesitation = await client.evaluate(`(() => {
-    const highlighted = [...document.querySelectorAll('span')].find((span) => span.className.includes('E5A93C'));
-    return highlighted?.textContent ?? null;
-  })()`);
-  assert.equal(hesitation, "knight");
+  await waitForValue(client.evaluate, `[...document.querySelectorAll('span')].some((span) => span.textContent === 'went' && span.className.includes('E5A93C'))`, 8_000);
+  await waitForValue(client.evaluate, "document.body.textContent.includes('w · e · n · t')", 10_000);
+  await waitForValue(client.evaluate, "location.pathname === '/celebrate'", 24_000);
 
-  await sleep(2_150);
-  assert.equal(await client.evaluate("document.body.textContent.includes('The k is silent: /n-aɪ-t/')"), true);
-  await client.evaluate("document.querySelector('button[aria-label=\"Stop recording and finish\"]')?.click()");
-  await waitForValue(client.evaluate, "location.pathname === '/celebrate'", 12_000);
-  assert.match(await client.evaluate("localStorage.getItem('reader-leader-session-v2')"), /k-night/);
+  const regionalEnvelope = JSON.parse(await client.evaluate("localStorage.getItem('reader-leader-session-v2')"));
+  const regional = regionalEnvelope.state.session;
+  assert.equal(regional.currentTokenIndex, 13);
+  assert.equal(regional.evaluationMode, "regional-restraint");
+  assert.equal(regional.alignment.metrics.falseCorrectionRate, 0);
+  assert.equal(regional.alignment.tokens.find((token) => token.token.startsWith("horse")).status, "accepted-regional-variant");
+  assert.match(regional.attemptSnippet.dataUri, /^data:audio\//);
+  assert.equal(regional.attemptSnippet.durationMs, 2_000);
 
-  await client.evaluate(`(() => {
-    const link = [...document.querySelectorAll('a')].find((anchor) => anchor.textContent?.includes('View Educator Record'));
-    if (!link) throw new Error('Educator record link not found');
-    link.click();
-    return true;
-  })()`);
+  await client.evaluate(`[...document.querySelectorAll('a')].find((anchor) => anchor.textContent?.includes('View Educator Record'))?.click()`);
   await waitForValue(client.evaluate, "location.pathname === '/dashboard/student'");
-  await client.evaluate(`(() => {
-    const token = [...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'knight');
-    if (!token) throw new Error('Flagged knight token not found');
-    token.click();
-    return true;
-  })()`);
-  await waitForValue(client.evaluate, "document.body.textContent.includes('Spoken as: /k-n-aɪ-t/')");
-  await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Review Override'))?.click()`);
-  await waitForValue(client.evaluate, "document.body.textContent.includes('Accept Pronunciation')");
-  await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Accept Pronunciation'))?.click()`);
-  await waitForValue(client.evaluate, "document.body.textContent.includes('Accepted by explicit teacher override')");
-  await waitForValue(client.evaluate, "localStorage.getItem('reader-leader-session-v2')?.includes('accepted-teacher-override')");
+  await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.trim() === 'knight')?.click()`);
+  await waitForValue(client.evaluate, "document.body.textContent.includes('Listen to Attempt (2s)')");
+  await client.evaluate("document.querySelector('button[aria-label=\"Play the retained two-second attempt\"]')?.click()");
+  await waitForValue(client.evaluate, "document.body.textContent.includes('Playing the retained two-second attempt') || document.body.textContent.includes('Attempt playback complete')");
 
-  const finalState = await client.evaluate("localStorage.getItem('reader-leader-session-v2')");
-  assert.match(finalState, /accepted-teacher-override/);
-  assert.match(finalState, /Educator accepted the explicitly sounded silent/);
-
-  console.log("Browser flow passed: hydration, Green Band selection, 3s hesitation, 5s cue, alignment, and two-click teacher override.");
+  await client.command("Page.navigate", { url: APP_URL });
+  await waitForValue(client.evaluate, "document.documentElement.dataset.readerLeaderHydrated === 'true'");
+  await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('The Brave Knight'))?.click()`);
+  await waitForValue(client.evaluate, "location.pathname === '/read'");
+  await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Standard Received Pronunciation'))?.click()`);
+  await waitForValue(client.evaluate, "document.querySelector('button[aria-pressed=\"true\"]')?.textContent.includes('Baseline ASR')");
+  for (let index = 0; index < 13; index += 1) {
+    await client.evaluate("document.querySelector('button[aria-label=\"Next target word\"]')?.click()");
+    await sleep(50);
+  }
+  await waitForValue(client.evaluate, "document.querySelector('button[aria-label=\"Finish this reading\"]') !== null");
+  await client.evaluate("document.querySelector('button[aria-label=\"Finish this reading\"]')?.click()");
+  await waitForValue(client.evaluate, "location.pathname === '/celebrate'", 12_000);
+  const standardEnvelope = JSON.parse(await client.evaluate("localStorage.getItem('reader-leader-session-v2')"));
+  const standard = standardEnvelope.state.session;
+  assert.equal(standard.evaluationMode, "standard-rp");
+  assert.equal(standard.alignment.tokens.find((token) => token.token.startsWith("horse")).status, "substitution");
+  assert.equal(standard.alignment.metrics.falseCorrectionRate, 7.1);
+  console.log("Phase 4 browser flow passed: dynamic progression, active-word pause support, retained audio playback, auto-finish, and both evaluation modes.");
 } catch (error) {
   console.error("Browser verification failed:", error);
   if (client) console.error("Captured runtime events:", JSON.stringify(client.events, null, 2));

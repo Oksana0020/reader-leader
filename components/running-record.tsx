@@ -1,10 +1,11 @@
 "use client";
 
 /* Educator evidence rule: render token-level evidence faithfully, distinguish provisional review from teacher acceptance, and never infer penalties from colour alone. */
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, CirclePlay, X } from "lucide-react";
 import { useReaderSession } from "@/app/providers";
 import { TwoStepOverride } from "@/components/two-step-override";
+import { audioDataUriToBlob } from "@/lib/audio-data";
 import type { AlignmentResponse, TokenAlignment } from "@/lib/domain";
 
 const interactiveStatuses = new Set(["review", "substitution", "omission", "accepted-teacher-override"]);
@@ -20,8 +21,53 @@ export function RunningRecord({ alignment }: { alignment: AlignmentResponse }) {
   const { state, confirmOverride } = useReaderSession();
   const [openTokenId, setOpenTokenId] = useState<string | null>(null);
   const [playbackMessage, setPlaybackMessage] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
   const openToken = alignment.tokens.find((token) => token.id === openTokenId) ?? null;
   const accepted = openToken?.status === "accepted-teacher-override";
+  const snippetDataUri = state.session.attemptSnippet?.dataUri;
+
+  const releasePlayback = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => releasePlayback, [releasePlayback, snippetDataUri]);
+
+  async function playAttempt() {
+    releasePlayback();
+    const snippet = state.session.attemptSnippet;
+    if (!snippet) {
+      setPlaybackMessage("No retained audio is available for this seeded demonstration record.");
+      return;
+    }
+    try {
+      const objectUrl = URL.createObjectURL(audioDataUriToBlob(snippet.dataUri));
+      const audio = new Audio(objectUrl);
+      objectUrlRef.current = objectUrl;
+      audioRef.current = audio;
+      audio.onended = () => {
+        releasePlayback();
+        setPlaybackMessage("Attempt playback complete.");
+      };
+      audio.onerror = () => {
+        releasePlayback();
+        setPlaybackMessage("This browser could not play the retained attempt.");
+      };
+      setPlaybackMessage("Playing the retained two-second attempt…");
+      await audio.play();
+    } catch {
+      releasePlayback();
+      setPlaybackMessage("This browser could not play the retained attempt.");
+    }
+  }
 
   function confirmTeacherDecision() {
     if (!openToken) return;
@@ -35,6 +81,7 @@ export function RunningRecord({ alignment }: { alignment: AlignmentResponse }) {
         <div className="flex gap-3 text-sm font-black">
           <span className="rounded-full bg-[var(--reader-aqua)] px-3 py-1.5">Accuracy {alignment.metrics.accuracyRate}%</span>
           <span className="rounded-full bg-[var(--reader-mint)] px-3 py-1.5">{alignment.metrics.wcpm} WCPM</span>
+          <span className="rounded-full bg-[#fff0c8] px-3 py-1.5">False corrections {alignment.metrics.falseCorrectionRate.toFixed(1)}%</span>
         </div>
       </div>
 
@@ -68,7 +115,7 @@ export function RunningRecord({ alignment }: { alignment: AlignmentResponse }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-lg font-black">{accepted ? "Educator decision recorded" : `Review “${openToken.token.replace(/[.,!?]/g, "")}”`}</p>
-              <p className="mt-2">Spoken as: <strong>/k-n-aɪ-t/</strong> (Child sounded out the silent &apos;k&apos;)</p>
+              <p className="mt-2">Spoken as: <strong>{openToken.phoneticDisplay ?? openToken.heardAs ?? "Not available"}</strong> ({openToken.explanation ?? "Pronunciation evidence available for review."})</p>
               <p className={`mt-2 text-sm font-black ${accepted ? "text-emerald-700" : "text-[var(--reader-teal-deep)]"}`}>
                 {accepted ? "Accepted by explicit teacher override · 0% penalty" : "Provisional AI review · 0% penalty pending educator judgement"}
               </p>
@@ -76,10 +123,12 @@ export function RunningRecord({ alignment }: { alignment: AlignmentResponse }) {
             <button aria-label="Close pronunciation review" className="pressable rounded-lg p-1 text-slate-500" onClick={() => setOpenTokenId(null)} type="button"><X className="size-5" /></button>
           </div>
 
-          <button className="pressable mt-4 flex items-center gap-2 font-black text-[var(--reader-teal-deep)]" onClick={() => setPlaybackMessage("Raw pupil audio is not retained in this privacy-first prototype.")} type="button">
-            <CirclePlay className="size-6" /> Listen to Attempt (2s)
-          </button>
-          {playbackMessage && <p aria-live="polite" className="mt-2 text-sm text-slate-600">{playbackMessage}</p>}
+          {openToken.token.toLowerCase().replace(/[^a-z']/g, "") === "knight" && <>
+            <button aria-label="Play the retained two-second attempt" className="pressable mt-4 flex items-center gap-2 font-black text-[var(--reader-teal-deep)]" onClick={() => void playAttempt()} type="button">
+              <CirclePlay className="size-6" /> Listen to Attempt (2s)
+            </button>
+            {playbackMessage && <p aria-live="polite" className="mt-2 text-sm text-slate-600">{playbackMessage}</p>}
+          </>}
           <TwoStepOverride accepted={accepted} onConfirm={confirmTeacherDecision} />
         </div>
       )}

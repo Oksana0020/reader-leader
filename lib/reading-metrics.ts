@@ -4,12 +4,14 @@ import type { AlignmentResponse, ReadingMetrics, TokenAlignment } from "@/lib/do
 export function calculateReadingMetrics(tokens: TokenAlignment[], elapsedSeconds: number): ReadingMetrics {
   const total = Math.max(tokens.length, 1);
   const accepted = tokens.filter((token) => !token.scoreImpact).length;
+  const falseCorrections = tokens.filter((token) => token.falseCorrection).length;
   const minutes = Math.max(elapsedSeconds / 60, 1 / 60);
 
   return {
     accuracyRate: Math.round((accepted / total) * 100),
     wcpm: Math.round(accepted / minutes),
     elapsedSeconds: Math.max(Math.round(elapsedSeconds), 1),
+    falseCorrectionRate: Number(((falseCorrections / total) * 100).toFixed(1)),
   };
 }
 

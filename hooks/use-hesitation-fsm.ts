@@ -8,24 +8,50 @@ const VOICE_RMS_THRESHOLD = 0.035;
 const SPEECH_RELEASE_MS = 180;
 const UI_SAMPLE_INTERVAL_MS = 100;
 
+export interface TimedAudioChunk {
+  blob: Blob;
+  endMs: number;
+}
+
 export interface AudioCaptureResult {
   blob: Blob | null;
+  chunks: TimedAudioChunk[];
+  snippetBlob: Blob | null;
   elapsedMs: number;
 }
 
 export function useHesitationFSM() {
   const [machine, dispatch] = useReducer(hesitationReducer, INITIAL_HESITATION_MACHINE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [speechStartedEpoch, setSpeechStartedEpoch] = useState(0);
+  const [speechEndedEpoch, setSpeechEndedEpoch] = useState(0);
   const streamRef = useRef<MediaStream | null>(null);
   const contextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const snippetRecorderRef = useRef<MediaRecorder | null>(null);
+  const snippetChunksRef = useRef<Blob[]>([]);
+  const snippetTimerRef = useRef<number | null>(null);
+  const snippetPromiseRef = useRef<Promise<Blob | null> | null>(null);
+  const snippetBlobRef = useRef<Blob | null>(null);
+  const chunksRef = useRef<TimedAudioChunk[]>([]);
   const frameRef = useRef<number | null>(null);
   const startedAtRef = useRef<number | null>(null);
   const lastVoiceAtRef = useRef<number | null>(null);
   const lastUiDispatchAtRef = useRef(0);
+  const speakingRef = useRef(false);
+
+  const stopSnippetCapture = useCallback(async (): Promise<Blob | null> => {
+    if (snippetTimerRef.current !== null) {
+      window.clearTimeout(snippetTimerRef.current);
+      snippetTimerRef.current = null;
+    }
+    const pending = snippetPromiseRef.current;
+    const recorder = snippetRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") recorder.stop();
+    return pending ?? snippetBlobRef.current;
+  }, []);
 
   const disconnectAudioGraph = useCallback(() => {
     if (frameRef.current !== null) {
@@ -40,6 +66,7 @@ export function useHesitationFSM() {
       recorder.stop();
     }
     recorderRef.current = null;
+    void stopSnippetCapture();
 
     sourceRef.current?.disconnect();
     sourceRef.current = null;
@@ -51,17 +78,60 @@ export function useHesitationFSM() {
 
     const audioContext = contextRef.current;
     contextRef.current = null;
-    if (audioContext && audioContext.state !== "closed") {
-      void audioContext.close().catch(() => undefined);
-    }
+    if (audioContext && audioContext.state !== "closed") void audioContext.close().catch(() => undefined);
 
     lastVoiceAtRef.current = null;
     lastUiDispatchAtRef.current = 0;
+    speakingRef.current = false;
+  }, [stopSnippetCapture]);
+
+  const captureSnippet = useCallback((durationMs = 2_000): Promise<Blob | null> => {
+    if (snippetPromiseRef.current) return snippetPromiseRef.current;
+    const stream = streamRef.current;
+    if (!stream || typeof MediaRecorder === "undefined") return Promise.resolve(null);
+
+    snippetChunksRef.current = [];
+    const preferredType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+      .find((type) => MediaRecorder.isTypeSupported(type));
+    const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
+    snippetRecorderRef.current = recorder;
+
+    const pending = new Promise<Blob | null>((resolve) => {
+      let settled = false;
+      const settle = (blob: Blob | null) => {
+        if (settled) return;
+        settled = true;
+        snippetBlobRef.current = blob;
+        snippetRecorderRef.current = null;
+        snippetPromiseRef.current = null;
+        snippetTimerRef.current = null;
+        resolve(blob);
+      };
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) snippetChunksRef.current.push(event.data);
+      };
+      recorder.onerror = () => settle(null);
+      recorder.addEventListener("stop", () => {
+        settle(snippetChunksRef.current.length > 0
+          ? new Blob(snippetChunksRef.current, { type: recorder.mimeType || "audio/webm" })
+          : null);
+      }, { once: true });
+      recorder.start(100);
+      snippetTimerRef.current = window.setTimeout(() => {
+        if (recorder.state !== "inactive") recorder.stop();
+      }, durationMs);
+    });
+    snippetPromiseRef.current = pending;
+    return pending;
   }, []);
 
   const start = useCallback(async (): Promise<boolean> => {
     disconnectAudioGraph();
     chunksRef.current = [];
+    snippetChunksRef.current = [];
+    snippetBlobRef.current = null;
+    setSpeechStartedEpoch(0);
+    setSpeechEndedEpoch(0);
     setErrorMessage(null);
 
     if (!navigator.mediaDevices?.getUserMedia || !window.AudioContext) {
@@ -88,12 +158,16 @@ export function useHesitationFSM() {
       analyserRef.current = analyser;
       sourceRef.current = source;
       startedAtRef.current = performance.now();
-      lastVoiceAtRef.current = startedAtRef.current;
+      lastVoiceAtRef.current = null;
 
       if (typeof MediaRecorder !== "undefined") {
-        const recorder = new MediaRecorder(stream);
+        const preferredType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"]
+          .find((type) => MediaRecorder.isTypeSupported(type));
+        const recorder = preferredType ? new MediaRecorder(stream, { mimeType: preferredType }) : new MediaRecorder(stream);
         recorder.ondataavailable = (event) => {
-          if (event.data.size > 0) chunksRef.current.push(event.data);
+          if (event.data.size === 0) return;
+          const endMs = startedAtRef.current === null ? 0 : performance.now() - startedAtRef.current;
+          chunksRef.current.push({ blob: event.data, endMs });
         };
         recorder.onerror = () => setErrorMessage("The recording could not be captured, but live support can continue.");
         recorder.start(250);
@@ -116,6 +190,9 @@ export function useHesitationFSM() {
         if (now - lastUiDispatchAtRef.current >= UI_SAMPLE_INTERVAL_MS) {
           lastUiDispatchAtRef.current = now;
           const recentlySpeaking = lastVoiceAtRef.current !== null && now - lastVoiceAtRef.current < SPEECH_RELEASE_MS;
+          if (recentlySpeaking && !speakingRef.current) setSpeechStartedEpoch((current) => current + 1);
+          if (!recentlySpeaking && speakingRef.current) setSpeechEndedEpoch((current) => current + 1);
+          speakingRef.current = recentlySpeaking;
           dispatch({ type: recentlySpeaking ? "SPEECH" : "SILENCE", atMs: now });
         }
         frameRef.current = requestAnimationFrame(sample);
@@ -139,6 +216,7 @@ export function useHesitationFSM() {
     dispatch({ type: "BEGIN_FINISH" });
     const elapsedMs = startedAtRef.current === null ? 5_000 : Math.max(performance.now() - startedAtRef.current, 1_000);
     const recorder = recorderRef.current;
+    const snippetBlob = await stopSnippetCapture();
 
     if (frameRef.current !== null) {
       cancelAnimationFrame(frameRef.current);
@@ -148,25 +226,29 @@ export function useHesitationFSM() {
     let blob: Blob | null = null;
     if (recorder && recorder.state !== "inactive") {
       blob = await new Promise<Blob>((resolve) => {
-        const finishRecording = () => resolve(new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" }));
+        const finishRecording = () => resolve(new Blob(chunksRef.current.map((chunk) => chunk.blob), { type: recorder.mimeType || "audio/webm" }));
         recorder.addEventListener("stop", finishRecording, { once: true });
         recorder.stop();
       });
     } else if (chunksRef.current.length > 0) {
-      blob = new Blob(chunksRef.current, { type: "audio/webm" });
+      blob = new Blob(chunksRef.current.map((chunk) => chunk.blob), { type: chunksRef.current[0].blob.type || "audio/webm" });
     }
 
+    const chunks = [...chunksRef.current];
     recorderRef.current = null;
     disconnectAudioGraph();
     startedAtRef.current = null;
+    snippetBlobRef.current = null;
     dispatch({ type: "FINISHED" });
-    return { blob, elapsedMs };
-  }, [disconnectAudioGraph]);
+    return { blob, chunks, snippetBlob, elapsedMs };
+  }, [disconnectAudioGraph, stopSnippetCapture]);
 
   const cancel = useCallback(() => {
     disconnectAudioGraph();
     startedAtRef.current = null;
     chunksRef.current = [];
+    snippetChunksRef.current = [];
+    snippetBlobRef.current = null;
     setErrorMessage(null);
     dispatch({ type: "RESET" });
   }, [disconnectAudioGraph]);
@@ -176,8 +258,11 @@ export function useHesitationFSM() {
   return {
     ...machine,
     errorMessage,
+    speechStartedEpoch,
+    speechEndedEpoch,
     isActive: ["listening", "speaking", "hesitating", "prompting"].includes(machine.phase),
     start,
+    captureSnippet,
     finish,
     cancel,
   };

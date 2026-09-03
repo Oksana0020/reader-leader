@@ -35,6 +35,12 @@ export const ACCEPTED_REGIONAL_VARIANTS = [{
   localeProfiles: ["en-GB", "en-IE"],
   explanation: "Correct reading: the initial ‘k’ is silent.",
   scoreImpact: false,
+}, {
+  token: "horse",
+  phoneticDisplay: "/hɔːrs/",
+  localeProfiles: ["en-IE"],
+  explanation: "Accepted rhotic /r/ in Hiberno-English and Northern Irish speech.",
+  scoreImpact: false,
 }] as const;
 
 const runningRecordTokens: TokenAlignment[] = "The brave knight went out into the cold night to find his lost horse."
@@ -54,8 +60,8 @@ runningRecordTokens[13] = {
 };
 
 export const SEEDED_RUNNING_RECORD: AlignmentResponse = {
-  sessionId: "session-jack-001", localeProfile: "en-GB", restraintApplied: true, lastConfirmedTokenIndex: 13,
-  tokens: runningRecordTokens, metrics: { accuracyRate: 94, wcpm: 62, elapsedSeconds: 21 },
+  sessionId: "session-jack-001", localeProfile: "en-IE", evaluationMode: "regional-restraint", restraintApplied: true, lastConfirmedTokenIndex: 13,
+  tokens: runningRecordTokens, metrics: { accuracyRate: 94, wcpm: 62, elapsedSeconds: 21, falseCorrectionRate: 0 },
 };
 
 export const CLASS_STUDENTS: StudentMetric[] = [
@@ -80,9 +86,10 @@ export const DEFAULT_STATE: ReaderLeaderState = {
       targetText: "The big cat sat on the mat.",
       imageUrl: STORY_ASSETS.fatCat,
     },
-    localeProfile: "en-GB",
+    localeProfile: "en-IE",
+    evaluationMode: "regional-restraint",
     status: "ready",
-    currentTokenIndex: 2,
+    currentTokenIndex: 0,
     elapsedMs: 0,
     earnedBadges: ["great-listening", "phonics-champion", "speed-reader"],
   },

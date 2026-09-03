@@ -1,6 +1,6 @@
 # Reader Leader
 
-Reader Leader is a Next.js App Router walking skeleton for a UK and Hiberno-English early-reading fluency tutor. It now implements the single-path student and educator loop: story selection, memory-safe live listening, timed hesitation support, celebration, a generated running record, and an auditable two-click teacher override.
+Reader Leader is a Next.js App Router walking skeleton for a UK and Hiberno-English early-reading fluency tutor. It implements the single-path student and educator loop: story selection, memory-safe live listening, VAD-driven word progression, timed hesitation support, celebration, a generated running record with real attempt playback, and an auditable two-click teacher override.
 
 ## Foundation Stack
 
@@ -12,6 +12,7 @@ Reader Leader is a Next.js App Router walking skeleton for a UK and Hiberno-Engl
 | Validation | Zod at the `/api/speech/align` boundary |
 | State | Versioned typed React context persisted to `localStorage` with safe seed fallback |
 | Audio | Web Audio `AnalyserNode` VAD plus `MediaRecorder`, with explicit teardown on finish and unmount |
+| Comparison | Standard RP baseline-ASR simulation versus Hiberno-English/Northern Irish agent restraint |
 | Icons | Lucide React plus the Reader Leader star-and-sound mark |
 
 ## Routes
@@ -35,4 +36,8 @@ The alignment mock treats **“knight” pronounced as `/n-aɪ-t/` as correct**,
 
 ## Audio Lifecycle
 
-The microphone hook owns its complete resource graph. Starting creates one stream, source, analyser, animation-frame loop, optional recorder, and audio context. Finishing, cancellation, errors, and component unmount all stop every media track, cancel the frame loop, disconnect source and analyser nodes, stop the recorder when active, and close the `AudioContext` idempotently.
+The microphone hook owns its complete resource graph. Starting creates one stream, source, analyser, animation-frame loop, optional session recorder, bounded two-second attempt recorder, and audio context. Finishing, cancellation, errors, and component unmount stop every media track, cancel the frame loop, disconnect source and analyser nodes, stop active recorders, and close the `AudioContext` idempotently. The retained `knight` segment is encoded as a local audio data URI; educator playback uses a temporary object URL that is revoked on completion, session reset/change, or unmount.
+
+## Phase 4 Pitch Demonstration
+
+Live VAD utterance edges advance the active token. A three-second pause highlights that token in amber, and a five-second pause reveals its phonetic scaffold without score impact. The regional mode accepts rhotic `horse` as `accepted-regional-variant`, stays silent, and reports a 0.0% false-correction rate. Standard RP comparison mode deliberately simulates a baseline substitution and amber interruption, yielding a measurable false-correction rate for the same reading.

@@ -31,6 +31,12 @@ function normaliseState(value: unknown): ReaderLeaderState {
   const isObsoletePhaseOneRecord = rawSession.id === "session-jack-001"
     && rawSession.storyId === "fat-cat"
     && rawSession.alignment?.sessionId === "session-jack-001";
+  const evaluationMode = rawSession.evaluationMode === "standard-rp" ? "standard-rp" : "regional-restraint";
+  const attemptSnippet = rawSession.attemptSnippet
+    && typeof rawSession.attemptSnippet.dataUri === "string"
+    && rawSession.attemptSnippet.dataUri.startsWith("data:audio/")
+    ? rawSession.attemptSnippet
+    : undefined;
 
   return {
     ...DEFAULT_STATE,
@@ -41,8 +47,11 @@ function normaliseState(value: unknown): ReaderLeaderState {
       ...rawSession,
       storyId: sessionStoryId,
       storySnapshot: rawSession.storySnapshot ?? getStorySnapshot(story),
+      evaluationMode,
+      localeProfile: evaluationMode === "regional-restraint" ? "en-IE" : "en-GB",
       elapsedMs: rawSession.elapsedMs ?? 0,
       alignment: isObsoletePhaseOneRecord ? undefined : rawSession.alignment,
+      attemptSnippet,
     },
     overrides: Array.isArray(candidate.overrides) ? candidate.overrides : [],
   };

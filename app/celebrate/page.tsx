@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Ear, Languages, Zap } from "lucide-react";
 import { StudentTopBar } from "@/components/student-top-bar";
 import { STORY_ASSETS } from "@/lib/seed";
+import { SessionOutcomePill } from "@/components/session-outcome-pill";
 
 export const metadata = { title: "Brilliant Reading" };
 const badges = [{ label: "Great Listening", icon: Ear, tone: "teal" }, { label: "Phonics Champion", icon: Languages, tone: "gold" }, { label: "Speed Reader", icon: Zap, tone: "teal" }] as const;
@@ -15,6 +16,7 @@ export default function CelebratePage() {
       <section className="mx-auto flex max-w-[760px] flex-col items-center px-8 pt-14 text-center sm:px-12">
         <Image alt="A smiling gold celebration star" className="size-72 object-contain sm:size-80" height={320} priority src={STORY_ASSETS.celebrationStar} unoptimized width={320} />
         <h1 className="mt-4 text-[4.2rem] leading-[1.08] font-black tracking-[-0.05em] text-[var(--reader-teal-deep)] sm:text-[5rem]">Brilliant<br />Reading!</h1>
+        <SessionOutcomePill />
         <div className="mt-14 grid w-full grid-cols-3 gap-3">
           {badges.map(({ label, icon: Icon, tone }) => {
             const gold = tone === "gold";
