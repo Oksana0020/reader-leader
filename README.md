@@ -27,7 +27,7 @@ Reader Leader is a Next.js App Router walking skeleton for a UK and Hiberno-Engl
 
 ## Run Locally
 
-Install dependencies with `pnpm install`, start the development server with `pnpm dev`, and open `http://localhost:3000`. Run `pnpm check` for lint and strict TypeScript validation, `pnpm verify:core` for the threshold/metrics assertions, and `pnpm verify:browser` for the self-contained Chromium flow with fake silent audio. Run `NODE_ENV=production pnpm build` in environments that already inject a development `NODE_ENV` value.
+Install dependencies with `pnpm install`, create the compiled bundle with `NODE_ENV=production pnpm build`, then run the production preview with `pnpm dev` or `pnpm start` and open `http://localhost:3000`. The managed preview intentionally maps `pnpm dev` to `next start`, avoiding development HMR WebSockets across container proxies. Run `pnpm check` for lint and strict TypeScript validation, `pnpm verify:core` for threshold/metrics assertions, and `pnpm verify:browser` for the self-contained Chromium flow with fake silent audio.
 
 ## Phonics Restraint Contract
 

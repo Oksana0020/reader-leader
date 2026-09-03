@@ -6,3 +6,10 @@
 - [x] Apply only minimal corrections required by the active files; do not duplicate helper logic.
 - [x] Verify Fat Cat and Brave Knight snapshots, microphone permission and hesitation timers, align-and-celebrate navigation, flagged `knight` evidence, and `accepted-teacher-override` audit persistence.
 - [x] Run lint, strict TypeScript, the focused core checks, production build, and live browser flow.
+
+## Production Preview
+
+- [x] Confirm the story-card and microphone buttons retain their existing client `onClick` handlers.
+- [x] Configure the managed preview command to run the compiled Next.js server without development HMR.
+- [x] Build the production application and restart port 3000 under the production command.
+- [x] Verify HTTP response, absence of `/_next/hmr`, React hydration, story navigation, and the microphone permission path on the preview URL.
