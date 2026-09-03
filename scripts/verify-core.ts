@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import {
   BASELINE_ASR_PATIENCE_MS,
-  FINAL_TOKEN_AUTO_FINISH_PAUSE_MS,
+  BASELINE_AUTO_FINISH_MS,
   HESITATION_THRESHOLD_MS,
+  HIBERNO_AUTO_FINISH_MS,
   INITIAL_TOKEN_INDEX,
   INITIAL_HESITATION_MACHINE,
   PROMPT_THRESHOLD_MS,
@@ -10,6 +11,7 @@ import {
   hesitationReducer,
   shouldAutoFinishReading,
   shouldShowBaselineInterrupt,
+  shouldSuppressFinalHesitation,
 } from "../lib/hesitation-fsm.ts";
 import { createAttemptSnippetWindow } from "../lib/audio-data.ts";
 import { calculateReadingMetrics } from "../lib/reading-metrics.ts";
@@ -18,7 +20,8 @@ import type { AlignmentStatus, TokenAlignment } from "../lib/domain.ts";
 assert.equal(HESITATION_THRESHOLD_MS, 2_000);
 assert.equal(PROMPT_THRESHOLD_MS, 3_800);
 assert.equal(BASELINE_ASR_PATIENCE_MS, 800);
-assert.equal(FINAL_TOKEN_AUTO_FINISH_PAUSE_MS, 2_400);
+assert.equal(HIBERNO_AUTO_FINISH_MS, 1_200);
+assert.equal(BASELINE_AUTO_FINISH_MS, 2_400);
 
 let state = hesitationReducer(INITIAL_HESITATION_MACHINE, { type: "PERMISSION_GRANTED", atMs: 0 });
 state = hesitationReducer(state, { type: "SILENCE", atMs: HESITATION_THRESHOLD_MS - 1 });
@@ -36,8 +39,12 @@ assert.equal(INITIAL_TOKEN_INDEX, 0);
 
 assert.equal(advanceTokenIndex(0, 14), 1);
 assert.equal(advanceTokenIndex(13, 14), 13);
-assert.equal(shouldAutoFinishReading(13, 14, true, FINAL_TOKEN_AUTO_FINISH_PAUSE_MS - 1), false);
-assert.equal(shouldAutoFinishReading(13, 14, true, FINAL_TOKEN_AUTO_FINISH_PAUSE_MS), true);
+assert.equal(shouldAutoFinishReading(13, 14, true, HIBERNO_AUTO_FINISH_MS - 1, "regional-restraint"), false);
+assert.equal(shouldAutoFinishReading(13, 14, true, HIBERNO_AUTO_FINISH_MS, "regional-restraint"), true);
+assert.equal(shouldAutoFinishReading(13, 14, true, BASELINE_AUTO_FINISH_MS - 1, "standard-rp"), false);
+assert.equal(shouldAutoFinishReading(13, 14, true, BASELINE_AUTO_FINISH_MS, "standard-rp"), true);
+assert.equal(shouldSuppressFinalHesitation("regional-restraint", 13, 14), true);
+assert.equal(shouldSuppressFinalHesitation("standard-rp", 13, 14), false);
 assert.deepEqual(createAttemptSnippetWindow(2_750), { startMs: 2_350, endMs: 4_350, durationMs: 2_000 });
 assert.equal(shouldShowBaselineInterrupt("standard-rp", "horse.", true, BASELINE_ASR_PATIENCE_MS - 1), false);
 assert.equal(shouldShowBaselineInterrupt("standard-rp", "horse.", true, BASELINE_ASR_PATIENCE_MS), true);

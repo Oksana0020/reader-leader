@@ -7,7 +7,8 @@ export const PROMPT_THRESHOLD_MS = 3_800;              // Reveals phonetic cue a
 
 // Baseline ASR vs Final Navigation Sequencing
 export const BASELINE_ASR_PATIENCE_MS = 800;           // Shows baseline error after 800ms on "horse"
-export const FINAL_TOKEN_AUTO_FINISH_PAUSE_MS = 2_400; // Holds canvas for 2.4s so audience sees the baseline pill
+export const HIBERNO_AUTO_FINISH_MS = 1_200;            // Clean regional completion before generic amber support
+export const BASELINE_AUTO_FINISH_MS = 2_400;           // Keeps the 800ms baseline pill visible for about 1.6s
 export const INITIAL_TOKEN_INDEX = 0;
 
 export function shouldShowBaselineInterrupt(evaluationMode: EvaluationMode, token: string, isActive: boolean, silenceMs: number): boolean {
@@ -21,11 +22,16 @@ export function advanceTokenIndex(currentIndex: number, tokenCount: number): num
   return Math.min(Math.max(tokenCount - 1, 0), currentIndex + 1);
 }
 
-export function shouldAutoFinishReading(currentIndex: number, tokenCount: number, finalTokenSpoken: boolean, silenceMs: number): boolean {
+export function shouldSuppressFinalHesitation(evaluationMode: EvaluationMode, currentIndex: number, tokenCount: number): boolean {
+  return evaluationMode === "regional-restraint" && tokenCount > 0 && currentIndex === tokenCount - 1;
+}
+
+export function shouldAutoFinishReading(currentIndex: number, tokenCount: number, finalTokenSpoken: boolean, silenceMs: number, evaluationMode: EvaluationMode): boolean {
+  const completionDelay = evaluationMode === "standard-rp" ? BASELINE_AUTO_FINISH_MS : HIBERNO_AUTO_FINISH_MS;
   return tokenCount > 0
     && currentIndex === tokenCount - 1
     && finalTokenSpoken
-    && silenceMs >= FINAL_TOKEN_AUTO_FINISH_PAUSE_MS;
+    && silenceMs >= completionDelay;
 }
 
 export const INITIAL_HESITATION_MACHINE: HesitationMachine = {
@@ -60,6 +66,8 @@ export function hesitationReducer(
           : "listening";
       return { ...state, phase, silenceStartedAtMs, silenceMs };
     }
+    case "CLEAR_HESITATION":
+      return { ...state, phase: "listening", silenceStartedAtMs: event.atMs, silenceMs: 0 };
     case "BEGIN_FINISH":
       return { ...state, phase: "finishing" };
     case "FINISHED":

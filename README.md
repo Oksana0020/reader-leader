@@ -42,7 +42,7 @@ The microphone hook owns its complete resource graph. Starting creates one strea
 
 The analyser ignores all startup energy for 300 ms after microphone activation and then requires 90 ms of sustained above-threshold speech at an RMS threshold of 0.028 before emitting a speech-start edge. This protects the first token from device-access clicks and brief ambient transients while allowing natural conversational reading without shouting or exaggerated pacing.
 
-The `knight` evidence clip is decoded from the complete session recording using the detected token onset: 400 ms of pre-roll plus 1,600 ms after onset, yielding an exact two-second WAV for reliable educator playback. In Standard RP comparison mode, the simulated `horse` anomaly appears after 800 ms and the final canvas remains visible for 2,400 ms before navigation; regional-restraint semantics and the 0.0% false-correction outcome are unchanged.
+The `knight` evidence clip is decoded from the complete session recording using the detected token onset: 400 ms of pre-roll plus 1,600 ms after onset, yielding an exact two-second WAV for reliable educator playback. Final-token completion is mode-specific: regional restraint clears pending hesitation feedback, keeps `horse` neutral, and finishes after 1,200 ms; Standard RP reveals the simulated anomaly after 800 ms and finishes after 2,400 ms, keeping the comparison visible for about 1.6 seconds. The regional 0.0% false-correction outcome is unchanged.
 
 ## Phase 4 Pitch Demonstration
 

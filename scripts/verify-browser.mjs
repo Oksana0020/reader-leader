@@ -159,6 +159,10 @@ try {
   assert.equal(warmupEnvelope.state.session.currentTokenIndex, 0, "Startup noise must not advance the first word.");
   await waitForValue(client.evaluate, `[...document.querySelectorAll('span')].some((span) => span.textContent === 'went' && span.className.includes('E5A93C'))`, 8_000);
   await waitForValue(client.evaluate, "document.body.textContent.includes('w · e · n · t')", 10_000);
+  await waitForValue(client.evaluate, "JSON.parse(localStorage.getItem('reader-leader-session-v2')).state.session.currentTokenIndex === 13", 20_000);
+  await sleep(1_800);
+  assert.equal(await client.evaluate("location.pathname"), "/read", "Regional completion should retain its clean final-word hold before navigation.");
+  assert.equal(await client.evaluate(`[...document.querySelectorAll('span')].some((span) => span.textContent === 'horse.' && span.className.includes('E5A93C'))`), false, "Regional final horse must remain neutral.");
   await waitForValue(client.evaluate, "location.pathname === '/celebrate'", 24_000);
 
   const regionalEnvelope = JSON.parse(await client.evaluate("localStorage.getItem('reader-leader-session-v2')"));
@@ -190,13 +194,14 @@ try {
   await waitForValue(client.evaluate, "location.pathname === '/read'");
   await client.evaluate(`[...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Standard Received Pronunciation'))?.click()`);
   await waitForValue(client.evaluate, "document.querySelector('button[aria-pressed=\"true\"]')?.textContent.includes('Baseline ASR')");
-  for (let index = 0; index < 13; index += 1) {
-    await client.evaluate("document.querySelector('button[aria-label=\"Next target word\"]')?.click()");
-    await sleep(50);
-  }
-  await waitForValue(client.evaluate, "document.querySelector('button[aria-label=\"Finish this reading\"]') !== null");
-  await client.evaluate("document.querySelector('button[aria-label=\"Finish this reading\"]')?.click()");
-  await waitForValue(client.evaluate, "location.pathname === '/celebrate'", 12_000);
+  await client.evaluate("document.querySelector('button[aria-label=\"Start microphone\"]')?.click()");
+  await waitForValue(client.evaluate, "document.querySelector('button[aria-label=\"Stop recording and finish\"]') !== null");
+  await waitForValue(client.evaluate, "JSON.parse(localStorage.getItem('reader-leader-session-v2')).state.session.currentTokenIndex === 13", 20_000);
+  await waitForValue(client.evaluate, "document.body.textContent.includes('Baseline ASR interrupt')", 5_000);
+  assert.equal(await client.evaluate(`[...document.querySelectorAll('span')].some((span) => span.textContent === 'horse.' && span.className.includes('E5A93C'))`), true, "Baseline final horse should show the substitution interrupt.");
+  await sleep(1_400);
+  assert.equal(await client.evaluate("location.pathname"), "/read", "Baseline interrupt should remain visible before final navigation.");
+  await waitForValue(client.evaluate, "location.pathname === '/celebrate'", 8_000);
   const standardEnvelope = JSON.parse(await client.evaluate("localStorage.getItem('reader-leader-session-v2')"));
   const standard = standardEnvelope.state.session;
   assert.equal(standard.evaluationMode, "standard-rp");

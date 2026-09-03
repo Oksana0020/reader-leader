@@ -244,6 +244,10 @@ export function useHesitationFSM() {
     dispatch({ type: "RESET" });
   }, [disconnectAudioGraph]);
 
+  const clearHesitation = useCallback(() => {
+    dispatch({ type: "CLEAR_HESITATION", atMs: performance.now() });
+  }, []);
+
   useEffect(() => disconnectAudioGraph, [disconnectAudioGraph]);
 
   return {
@@ -255,6 +259,7 @@ export function useHesitationFSM() {
     isActive: ["listening", "speaking", "hesitating", "prompting"].includes(machine.phase),
     start,
     captureSnippet,
+    clearHesitation,
     finish,
     cancel,
   };

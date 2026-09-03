@@ -8,7 +8,7 @@ import { StudentTopBar } from "@/components/student-top-bar";
 import { useReaderSession } from "@/app/providers";
 import { useHesitationFSM } from "@/hooks/use-hesitation-fsm";
 import { alignSpeech } from "@/lib/speech-alignment-client";
-import { advanceTokenIndex, INITIAL_TOKEN_INDEX, shouldAutoFinishReading, shouldShowBaselineInterrupt } from "@/lib/hesitation-fsm";
+import { advanceTokenIndex, INITIAL_TOKEN_INDEX, shouldAutoFinishReading, shouldShowBaselineInterrupt, shouldSuppressFinalHesitation } from "@/lib/hesitation-fsm";
 import { ATTEMPT_SNIPPET_DURATION_MS, ATTEMPT_SNIPPET_PRE_ROLL_MS, blobToAudioDataUri } from "@/lib/audio-data";
 
 function stripPunctuation(token: string) {
@@ -41,7 +41,8 @@ export function ReadingExperience() {
   const words = story.targetText.split(/\s+/);
   const currentIndex = Math.min(state.session.currentTokenIndex, words.length - 1);
   const baselineInterrupt = shouldShowBaselineInterrupt(state.session.evaluationMode, words[currentIndex], audio.isActive, audio.silenceMs);
-  const showHighlight = audio.phase === "hesitating" || audio.phase === "prompting" || baselineInterrupt;
+  const suppressFinalHesitation = shouldSuppressFinalHesitation(state.session.evaluationMode, currentIndex, words.length);
+  const showHighlight = (!suppressFinalHesitation && (audio.phase === "hesitating" || audio.phase === "prompting")) || baselineInterrupt;
   const busy = !hydrated || audio.phase === "requesting-permission" || audio.phase === "finishing" || state.session.status === "aligning";
 
   const resetAttemptRefs = useCallback(() => {
@@ -117,14 +118,15 @@ export function ReadingExperience() {
     handledSpeechEndRef.current = audio.speechEndedEpoch;
     if (currentIndex === words.length - 1) {
       finalTokenSpokenRef.current = true;
+      if (state.session.evaluationMode === "regional-restraint") audio.clearHesitation();
       return;
     }
     setCurrentToken(advanceTokenIndex(currentIndex, words.length));
-  }, [audio.isActive, audio.speechEndedEpoch, currentIndex, setCurrentToken, words.length]);
+  }, [audio, currentIndex, setCurrentToken, state.session.evaluationMode, words.length]);
 
   useEffect(() => {
-    if (shouldAutoFinishReading(currentIndex, words.length, finalTokenSpokenRef.current, audio.silenceMs)) void finishReading();
-  }, [audio.silenceMs, currentIndex, finishReading, words.length]);
+    if (shouldAutoFinishReading(currentIndex, words.length, finalTokenSpokenRef.current, audio.silenceMs, state.session.evaluationMode)) void finishReading();
+  }, [audio.silenceMs, currentIndex, finishReading, state.session.evaluationMode, words.length]);
 
   function moveBack() {
     finalTokenSpokenRef.current = false;
@@ -174,7 +176,7 @@ export function ReadingExperience() {
               </span>
             ))}
           </p>
-          {audio.phase === "prompting" && (
+          {audio.phase === "prompting" && !suppressFinalHesitation && (
             <p className="absolute -bottom-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border-4 border-white bg-[#fff0c8] px-5 py-2 text-lg font-black text-[var(--reader-gold-deep)] shadow-lg" role="status">
               {phoneticCue(words[currentIndex])}
             </p>

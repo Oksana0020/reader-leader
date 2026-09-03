@@ -63,3 +63,11 @@
 - [x] Set Baseline RP patience to 800 ms and final-token auto-finish hold to 2,400 ms.
 - [x] Update focused timing assertions and preserve all unrelated audio, alignment, and educator behavior.
 - [x] Run strict checks, a clean production build, HTTP 200 verification, and restart `0.0.0.0:3000`.
+
+## Final-Token Dialect Restraint Timing
+
+- [x] Add evaluation-specific final-token delays: 1,200 ms regional and 2,400 ms Baseline RP.
+- [x] Suppress general hesitation amber/prompt feedback on the final regional `horse` token.
+- [x] Preserve the Baseline RP 800 ms anomaly reveal and keep it visible before celebration.
+- [x] Update focused and browser regressions for the decoupled final-token paths.
+- [x] Run `pnpm test`, strict checks, a clean production build, HTTP 200, and restart `0.0.0.0:3000`.

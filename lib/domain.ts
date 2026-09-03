@@ -83,6 +83,7 @@ export type HesitationEvent =
   | { type: "UNSUPPORTED" }
   | { type: "SPEECH"; atMs: number }
   | { type: "SILENCE"; atMs: number }
+  | { type: "CLEAR_HESITATION"; atMs: number }
   | { type: "BEGIN_FINISH" }
   | { type: "FINISHED" }
   | { type: "FAIL" }
