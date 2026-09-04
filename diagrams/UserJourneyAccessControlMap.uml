@@ -1,0 +1,58 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+actor "Child" as Child
+actor "Teacher" as Teacher
+actor "Parent" as Parent
+
+rectangle "Reader Leader" {
+  usecase "Sign in / choose role" as Login
+  usecase "Dashboard" as Dash
+  usecase "Select story / level" as Story
+  usecase "Live read with mic" as LiveRead
+  usecase "Celebrate progress" as Celebrate
+
+  usecase "Upload material" as Upload
+  usecase "AI exercise generation" as AI
+  usecase "Review & edit" as Review
+  usecase "Assign to class" as Assign
+
+  usecase "Summary dashboard" as ParentSummary
+  usecase "Practice together" as Practice
+  usecase "Track streaks and evidence" as Streak
+}
+
+Child --> Login
+Child --> Dash
+Child --> Story
+Child --> LiveRead
+Child --> Celebrate
+
+Teacher --> Login
+Teacher --> Dash
+Teacher --> Upload
+Teacher --> AI
+Teacher --> Review
+Teacher --> Assign
+
+Parent --> Login
+Parent --> ParentSummary
+Parent --> Practice
+Parent --> Streak
+
+LiveRead ..> Celebrate : "reading attempt\naccent-aware scoring"
+LiveRead ..> ParentSummary : "session evidence"
+AI --> Review : "teacher validation"
+Review --> Assign : "approved material"
+Assign --> Story : "student library sync"
+
+note right of LiveRead
+  zero-token protection:
+  first spoken token is protected
+  accepted regional variant stays silent
+  teacher override remains explicit
+end note
+@enduml

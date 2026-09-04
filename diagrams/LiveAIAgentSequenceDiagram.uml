@@ -1,0 +1,37 @@
+@startuml
+skinparam sequenceMessageAlign center
+skinparam roundcorner 12
+skinparam shadowing false
+
+actor Child
+participant "Frontend UI" as UI
+participant "WebSocket Gateway" as WS
+participant "Speech Alignment Service" as Align
+participant "Accent / Confidence Policy" as Policy
+participant "Word State Resolver" as Resolver
+participant "Session Report" as Report
+
+Child->>UI: Start reading session
+UI->>WS: Open mic stream\n(token 0 protected)
+WS->>Align: Send audio chunks
+Align->>Policy: Compare spoken token vs expected word
+Policy->>Policy: Check dialect profile\nrhotic /r/ accepted\nsilent 'k' preserved
+alt High confidence and accent accepted
+    Policy-->>Resolver: correct OR accepted regional variant
+    Resolver-->>UI: current word = yellow
+    UI-->>Child: calm confirmation / no interruption
+    UI->>Resolver: complete token
+    Resolver-->>UI: completed word = blue
+else Low confidence or mismatch
+    Policy-->>Resolver: retry / prompt / red flag
+    Resolver-->>UI: mark current word red
+    UI-->>Child: gentle prompt / retry request
+else Teacher review required
+    Policy-->>Resolver: review state
+    Resolver-->>UI: amber review highlight
+    UI-->>Teacher: request confirmation
+end
+UI->>Report: Final token evidence + retry log + mode metadata
+Report-->>UI: Session report generated
+UI-->>Child: Celebration / progress summary
+@enduml

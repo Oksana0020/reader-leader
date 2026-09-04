@@ -1,0 +1,25 @@
+@startuml
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #F9FAF5
+  BorderColor #0E2D3C
+}
+start
+
+:Teacher opens materials dashboard;
+:Upload text or PDF passage;
+:Parse and normalize content;
+:Split material into reading chunks;
+:Generate AI activities / questions / comprehension prompts;
+:Open teacher review page;
+if (Needs edits?) then (yes)
+  :Edit wording, difficulty, or activity order;
+else (no)
+endif
+:Approve final material;
+:Save to class library;
+:Assign to student group;
+:Sync to individual student library;
+:Show assignment confirmation;
+stop
+@enduml

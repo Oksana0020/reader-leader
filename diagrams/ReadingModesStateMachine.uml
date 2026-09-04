@@ -1,0 +1,43 @@
+@startuml
+hide empty description
+skinparam state {
+  BackgroundColor #F7F4EA
+  BorderColor #2F6B6D
+  ArrowColor #2F6B6D
+}
+
+[*] --> UNREAD
+UNREAD --> CURRENT : speech starts
+CURRENT --> CORRECT : accepted match
+CURRENT --> INCORRECT : mismatch / hesitation
+CURRENT --> RETRIED_CORRECT : guided retry succeeds
+INCORRECT --> RETRIED_CORRECT : retry success
+RETRIED_CORRECT --> CORRECT : final accepted
+CORRECT --> UNREAD : next token
+INCORRECT --> [*] : final error logged
+RETRIED_CORRECT --> [*] : report stored
+
+state "ASSISTED_PRACTICE" as AP
+state "GUIDED_PRACTICE" as GP
+state "MONTHLY_ASSESSMENT" as MA
+
+AP : low-stakes cues\nretry encouraged
+GP : scaffolded support\nteacher-friendly feedback
+MA : strict evaluation\nretries retained for audit
+
+[*] --> AP
+AP --> GP : mode switches
+GP --> MA : monthly check
+MA --> AP : reset / new session
+
+AP --> CURRENT : start word
+GP --> CURRENT : start word
+MA --> CURRENT : start word
+
+note right of MA
+  In assessment mode:
+  retries are logged for reporting
+  false corrections are tracked
+  accepted regional variants remain neutral
+end note
+@enduml

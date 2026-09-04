@@ -1,0 +1,62 @@
+@startuml
+left to right direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+actor Child
+actor Teacher
+actor Parent
+
+package "Frontend Layer" {
+  component "React + Tailwind UI" as UI
+  component "Story Library" as StoryLib
+  component "Reading Canvas" as ReadCanvas
+  component "Teacher Review" as TeacherView
+  component "Parent Summary" as ParentView
+}
+
+package "Client Runtime" {
+  component "Mic Capture" as Mic
+  component "WebSocket Audio Stream" as Audio
+  component "Accent Policy Engine" as Accent
+  component "Session State Store" as Store
+  component "Word Highlight Renderer" as Render
+}
+
+package "AI Agent Engine" {
+  component "Speech-to-Text Alignment" as STT
+  component "Dialect + Confidence Policy" as Policy
+  component "Word State Resolver" as Resolver
+  component "Retry / Prompt Logic" as Retry
+}
+
+package "Reports & Exports" {
+  component "Session Report" as Report
+  component "PDF Export Service" as PDF
+}
+
+Child --> StoryLib
+Child --> ReadCanvas
+Teacher --> TeacherView
+Parent --> ParentView
+
+ReadCanvas --> Mic
+Mic --> Audio
+Audio --> STT
+STT --> Policy
+Policy --> Resolver
+Resolver --> Retry
+Retry --> Render
+Render --> Store
+Store --> Report
+Report --> PDF
+TeacherView --> Report
+ParentView --> Report
+
+note right of Policy
+  zero-token accent-aware logic:
+  accepted regional variant stays silent
+  false corrections are suppressed
+  teacher override remains review-based
+end note
+@enduml
