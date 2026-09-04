@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { hesitationReducer, INITIAL_HESITATION_MACHINE } from "@/lib/hesitation-fsm";
 import { ATTEMPT_SNIPPET_DURATION_MS, ATTEMPT_SNIPPET_PRE_ROLL_MS, createAttemptSnippetWindow, sliceAudioBlobToWav } from "@/lib/audio-data";
+import { createLiveAsrClient, type LiveAsrEvent } from "@/lib/live-asr";
 
 const VOICE_RMS_THRESHOLD = 0.028;
 const VAD_WARMUP_MS = 300;
@@ -29,6 +30,8 @@ export function useHesitationFSM() {
   const [speechStartedEpoch, setSpeechStartedEpoch] = useState(0);
   const [speechEndedEpoch, setSpeechEndedEpoch] = useState(0);
   const [speechStartedAtMs, setSpeechStartedAtMs] = useState(0);
+  const [asrStatus, setAsrStatus] = useState<string>("ASR offline");
+  const [asrTranscript, setAsrTranscript] = useState<string>("");
   const streamRef = useRef<MediaStream | null>(null);
   const contextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -42,11 +45,18 @@ export function useHesitationFSM() {
   const voiceCandidateStartedAtRef = useRef<number | null>(null);
   const lastUiDispatchAtRef = useRef(0);
   const speakingRef = useRef(false);
+  const asrClientRef = useRef<ReturnType<typeof createLiveAsrClient> | null>(null);
 
   const disconnectAudioGraph = useCallback(() => {
     if (frameRef.current !== null) {
       cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
+    }
+
+    if (asrClientRef.current) {
+      asrClientRef.current.stopSession();
+      asrClientRef.current.close();
+      asrClientRef.current = null;
     }
 
     const recorder = recorderRef.current;
@@ -127,11 +137,29 @@ export function useHesitationFSM() {
           if (event.data.size === 0) return;
           const endMs = startedAtRef.current === null ? 0 : performance.now() - startedAtRef.current;
           chunksRef.current.push({ blob: event.data, endMs });
+
+          if (asrClientRef.current) {
+            void event.data.arrayBuffer().then((buffer) => {
+              asrClientRef.current?.sendChunk(new Uint8Array(buffer));
+            }).catch(() => undefined);
+          }
         };
         recorder.onerror = () => setErrorMessage("The recording could not be captured, but live support can continue.");
         recorder.start(250);
         recorderRef.current = recorder;
       }
+
+      const asrClient = createLiveAsrClient("ws://127.0.0.1:8765", (event: LiveAsrEvent) => {
+        if (event.type === "status") setAsrStatus(event.text);
+        if (event.type === "partial" || event.type === "final") setAsrTranscript(event.text);
+        if (event.type === "error") {
+          setAsrStatus(event.text);
+          setErrorMessage(event.text);
+        }
+      });
+      asrClientRef.current = asrClient;
+      asrClient.connect();
+      asrClient.startSession();
 
       const samples = new Uint8Array(analyser.fftSize);
       const sample = (now: number) => {
@@ -262,5 +290,7 @@ export function useHesitationFSM() {
     clearHesitation,
     finish,
     cancel,
+    asrStatus,
+    asrTranscript,
   };
 }
