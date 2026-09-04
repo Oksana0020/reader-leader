@@ -53,6 +53,8 @@ export function useHesitationFSM() {
       frameRef.current = null;
     }
 
+    setAsrTranscript("");
+
     if (asrClientRef.current) {
       asrClientRef.current.stopSession();
       asrClientRef.current.close();
@@ -100,6 +102,7 @@ export function useHesitationFSM() {
     setSpeechStartedEpoch(0);
     setSpeechEndedEpoch(0);
     setSpeechStartedAtMs(0);
+    setAsrTranscript("");
     setErrorMessage(null);
 
     if (!navigator.mediaDevices?.getUserMedia || !window.AudioContext) {

@@ -10,6 +10,7 @@ import { useHesitationFSM } from "@/hooks/use-hesitation-fsm";
 import { alignSpeech } from "@/lib/speech-alignment-client";
 import { advanceTokenIndex, INITIAL_TOKEN_INDEX, shouldAutoFinishReading, shouldShowBaselineInterrupt, shouldSuppressFinalHesitation } from "@/lib/hesitation-fsm";
 import { ATTEMPT_SNIPPET_DURATION_MS, ATTEMPT_SNIPPET_PRE_ROLL_MS, blobToAudioDataUri } from "@/lib/audio-data";
+import { getMatchingTranscriptWord, isAccentSafeMatch } from "@/lib/asr-match";
 
 function stripPunctuation(token: string) {
   return token.toLowerCase().replace(/[^a-z']/g, "");
@@ -31,6 +32,7 @@ export function ReadingExperience() {
   const { state, hydrated, prepareReadingAttempt, startReading, setCurrentToken, setEvaluationMode, beginAlignment, completeReading } = useReaderSession();
   const audio = useHesitationFSM();
   const [alignmentError, setAlignmentError] = useState<string | null>(null);
+  const [liveAsrText, setLiveAsrText] = useState("");
   const handledSpeechStartRef = useRef(0);
   const handledSpeechEndRef = useRef(0);
   const finalTokenSpokenRef = useRef(false);
@@ -42,7 +44,9 @@ export function ReadingExperience() {
   const currentIndex = Math.min(state.session.currentTokenIndex, words.length - 1);
   const baselineInterrupt = shouldShowBaselineInterrupt(state.session.evaluationMode, words[currentIndex], audio.isActive, audio.silenceMs);
   const suppressFinalHesitation = shouldSuppressFinalHesitation(state.session.evaluationMode, currentIndex, words.length);
-  const showHighlight = (!suppressFinalHesitation && (audio.phase === "hesitating" || audio.phase === "prompting")) || baselineInterrupt;
+  const asrMatch = getMatchingTranscriptWord(words[currentIndex], liveAsrText, state.session.evaluationMode);
+  const liveWordRecognized = Boolean(asrMatch) && isAccentSafeMatch(words[currentIndex], asrMatch!, state.session.evaluationMode);
+  const showHighlight = (!suppressFinalHesitation && (audio.phase === "hesitating" || audio.phase === "prompting")) || baselineInterrupt || liveWordRecognized;
   const busy = !hydrated || audio.phase === "requesting-permission" || audio.phase === "finishing" || state.session.status === "aligning";
 
   const resetAttemptRefs = useCallback(() => {
@@ -56,10 +60,15 @@ export function ReadingExperience() {
   useEffect(() => {
     if (!hydrated || preparedStoryRef.current === story.id) return;
     preparedStoryRef.current = story.id;
+    setLiveAsrText("");
     audio.cancel();
     resetAttemptRefs();
     prepareReadingAttempt();
   }, [audio, hydrated, prepareReadingAttempt, resetAttemptRefs, story.id]);
+
+  useEffect(() => {
+    setLiveAsrText(audio.asrTranscript ?? "");
+  }, [audio.asrTranscript]);
 
   async function startMicrophone() {
     setCurrentToken(INITIAL_TOKEN_INDEX);
@@ -125,6 +134,15 @@ export function ReadingExperience() {
   }, [audio, currentIndex, setCurrentToken, state.session.evaluationMode, words.length]);
 
   useEffect(() => {
+    if (!liveWordRecognized) return;
+    if (currentIndex === words.length - 1) {
+      finalTokenSpokenRef.current = true;
+      return;
+    }
+    setCurrentToken(advanceTokenIndex(currentIndex, words.length));
+  }, [currentIndex, liveWordRecognized, setCurrentToken, words.length]);
+
+  useEffect(() => {
     if (shouldAutoFinishReading(currentIndex, words.length, finalTokenSpokenRef.current, audio.silenceMs, state.session.evaluationMode)) void finishReading();
   }, [audio.silenceMs, currentIndex, finishReading, state.session.evaluationMode, words.length]);
 
@@ -176,6 +194,9 @@ export function ReadingExperience() {
               </span>
             ))}
           </p>
+          {liveAsrText && (
+            <p className="mt-4 text-sm font-semibold text-[var(--reader-teal-deep)]">ASR live: {liveAsrText}</p>
+          )}
           {audio.phase === "prompting" && !suppressFinalHesitation && (
             <p className="absolute -bottom-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border-4 border-white bg-[#fff0c8] px-5 py-2 text-lg font-black text-[var(--reader-gold-deep)] shadow-lg" role="status">
               {phoneticCue(words[currentIndex])}
