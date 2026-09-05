@@ -139,7 +139,11 @@ export function ReadingExperience() {
       finalTokenSpokenRef.current = true;
       return;
     }
-    setCurrentToken(advanceTokenIndex(currentIndex, words.length));
+
+    const nextIndex = advanceTokenIndex(currentIndex, words.length);
+    if (nextIndex !== currentIndex) {
+      setCurrentToken(nextIndex);
+    }
   }, [currentIndex, liveWordRecognized, setCurrentToken, words.length]);
 
   useEffect(() => {

@@ -30,10 +30,22 @@ export function isAccentSafeMatch(currentToken: string, recognizedToken: string,
 
 export function getMatchingTranscriptWord(currentToken: string, transcriptText: string, evaluationMode: EvaluationMode): string | null {
   const tokens = tokenizeAsrTranscript(transcriptText);
+  const current = normalizeAsrToken(currentToken);
+
+  if (!current || tokens.length === 0) return null;
+
   for (let index = tokens.length - 1; index >= 0; index -= 1) {
-    if (isAccentSafeMatch(currentToken, tokens[index], evaluationMode)) {
-      return tokens[index];
+    const candidate = tokens[index];
+    if (candidate === current) return candidate;
+    if (isAccentSafeMatch(currentToken, candidate, evaluationMode)) {
+      return candidate;
     }
   }
+
+  if (current.length <= 4) {
+    const exactStem = tokens.find((candidate) => normalizeAsrToken(candidate).startsWith(current.slice(0, 2)));
+    if (exactStem) return exactStem;
+  }
+
   return null;
 }
