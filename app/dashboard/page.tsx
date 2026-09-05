@@ -4,9 +4,16 @@ import { ArrowLeft, CircleUserRound, Clock3, SlidersHorizontal } from "lucide-re
 import { CLASS_STUDENTS } from "@/lib/seed";
 import { EducatorBottomNav } from "@/components/educator-bottom-nav";
 import { BrandMark } from "@/components/brand-mark";
+import { buildPhonicsGapInsights } from "@/lib/phonics-gap-insights";
 
 export const metadata = { title: "Educator Insights" };
 const gaps = [{ label: "Digraphs", value: 60, colour: "#d8940d" }, { label: "Tricky Words", value: 45, colour: "#e94d4d" }, { label: "Blending", value: 85, colour: "#42a962" }];
+const phonicsInsights = buildPhonicsGapInsights([
+  { token: "knight", status: "accepted-regional-variant", scoreImpact: false },
+  { token: "night", status: "correct", scoreImpact: false },
+  { token: "horse", status: "review", scoreImpact: false },
+  { token: "lost", status: "substitution", scoreImpact: true },
+]);
 
 export default function DashboardPage() {
   return (
@@ -19,6 +26,17 @@ export default function DashboardPage() {
       </section>
       <section className="mt-5"><h2 className="flex items-center gap-3 text-3xl font-black">Class Overview <SlidersHorizontal className="size-8" /></h2><div className="educator-card mt-4 overflow-hidden"><div className="grid grid-cols-[1.35fr_.8fr_.7fr_.7fr] gap-2 border-b bg-[#f7f7fb] px-5 py-4 text-sm font-black sm:text-base"><span>Student Name</span><span>Book Band</span><span>Accuracy</span><span>WCPM</span></div>{CLASS_STUDENTS.map((student) => <Link className="grid grid-cols-[1.35fr_.8fr_.7fr_.7fr] items-center gap-2 border-b px-5 py-4 text-base last:border-b-0 sm:text-lg" href="/dashboard/student" key={student.id}><span className="font-semibold">{student.name}</span><span className="w-fit rounded-full bg-[var(--reader-gold)] px-3 py-1 text-sm font-black">{student.bookBand}</span><span>{student.accuracyRate}%</span><span>{student.wcpm}</span></Link>)}</div></section>
       <section className="mt-12"><h2 className="text-3xl font-black">Class Phonetic Gaps</h2><div className="educator-card mt-4 space-y-6 p-5">{gaps.map((gap) => <div key={gap.label}><div className="mb-2 flex justify-between text-lg"><span>{gap.label}</span><span>{gap.value}% Proficient</span></div><div className="h-5 overflow-hidden rounded-full bg-[#e3e5e9]"><div className="h-full rounded-full" style={{ width: `${gap.value}%`, backgroundColor: gap.colour }} /></div></div>)}</div></section>
+      <section className="mt-8 rounded-[1.8rem] border border-[#dfeaf0] bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between"><h2 className="text-2xl font-black text-[var(--reader-teal-deep)]">AI teaching next steps</h2><span className="rounded-full bg-[var(--reader-teal-soft)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--reader-teal-deep)]">Live insight</span></div>
+        <ul className="mt-4 space-y-3">
+          {phonicsInsights.map((insight) => (
+            <li className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700" key={insight.label}>
+              <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{insight.label}</span>
+              <span className="mt-1 block font-bold text-slate-800">{insight.summary}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
       <EducatorBottomNav active="class" />
     </div></main>
   );

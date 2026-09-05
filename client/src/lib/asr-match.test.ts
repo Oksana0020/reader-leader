@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { getMatchingTranscriptWord, isAccentSafeMatch, transcriptMatchesTargetSentence } from "../../../lib/asr-match";
 
+const buildAlignmentLike = (status: string, token: string) => ({
+  id: `token-${token}`,
+  token,
+  index: 0,
+  status,
+  confidence: 0.9,
+  scoreImpact: false,
+});
+
 describe("asr-match", () => {
   it("accepts a safe regional variant for knight", () => {
     expect(isAccentSafeMatch("knight", "night", "regional-restraint")).toBe(true);
@@ -50,5 +59,13 @@ describe("asr-match", () => {
   it("keeps the transcript safe when Irish-English variants appear in a sentence with multiple related sounds", () => {
     expect(getMatchingTranscriptWord("knight", "the brave knight was waiting by the gate and then the knight returned", "regional-restraint")).toBe("knight");
     expect(getMatchingTranscriptWord("horse", "the horse came down the road with a hoarse cry", "regional-restraint")).toBe("hoarse");
+  });
+
+  it("keeps reading evidence separate from a teacher override when a silent-letter pattern is reviewed", () => {
+    const direct = getMatchingTranscriptWord("knight", "the knight ran through the night", "regional-restraint");
+    const fallback = getMatchingTranscriptWord("night", "the knight ran through the night", "regional-restraint");
+    expect(direct).toBe("night");
+    expect(fallback).toBe("night");
+    expect(buildAlignmentLike("accepted-regional-variant", "knight").status).toBe("accepted-regional-variant");
   });
 });
