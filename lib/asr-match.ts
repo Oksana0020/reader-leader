@@ -6,7 +6,10 @@ const silentKPatterns = [
   ["knight", "nite"],
   ["night", "knight"],
   ["night", "nite"],
+  ["nite", "knight"],
+  ["nite", "night"],
   ["head", "hed"],
+  ["hed", "head"],
 ];
 
 const rhoticPatterns = [
@@ -14,7 +17,11 @@ const rhoticPatterns = [
   ["horse", "horse"],
   ["hoarse", "horse"],
   ["for", "four"],
+  ["for", "fore"],
   ["four", "for"],
+  ["four", "fore"],
+  ["fore", "for"],
+  ["fore", "four"],
 ];
 
 function variantPairMatches(current: string, recognized: string, variants: string[][]): boolean {
@@ -89,9 +96,6 @@ export function getMatchingTranscriptWord(currentToken: string, transcriptText: 
       return candidate;
     }
   }
-
-  const maybeCurrentWord = lastRelevantWindow.findLast((token) => normalizeAsrToken(token) === current);
-  if (maybeCurrentWord) return maybeCurrentWord;
 
   if (current.length <= 4) {
     const prefix = current.slice(0, Math.min(2, current.length));

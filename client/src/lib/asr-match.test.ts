@@ -4,6 +4,7 @@ import { getMatchingTranscriptWord, isAccentSafeMatch, transcriptMatchesTargetSe
 describe("asr-match", () => {
   it("accepts a safe regional variant for knight", () => {
     expect(isAccentSafeMatch("knight", "night", "regional-restraint")).toBe(true);
+    expect(isAccentSafeMatch("night", "nite", "regional-restraint")).toBe(true);
     expect(getMatchingTranscriptWord("knight", "the knight rides", "regional-restraint")).toBe("knight");
   });
 
@@ -17,6 +18,8 @@ describe("asr-match", () => {
     expect(isAccentSafeMatch("hoarse", "horse", "regional-restraint")).toBe(true);
     expect(isAccentSafeMatch("for", "four", "regional-restraint")).toBe(true);
     expect(isAccentSafeMatch("four", "for", "regional-restraint")).toBe(true);
+    expect(isAccentSafeMatch("for", "fore", "regional-restraint")).toBe(true);
+    expect(isAccentSafeMatch("fore", "for", "regional-restraint")).toBe(true);
     expect(getMatchingTranscriptWord("horse", "the horse came down the road with a hoarse cry", "regional-restraint")).toBe("hoarse");
   });
 
