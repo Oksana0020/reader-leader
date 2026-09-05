@@ -35,11 +35,24 @@ export function buildTeacherReport(alignment: AlignmentResponse) {
     ? "Review the evidence notes, confirm any teacher override, and then finalise the running record with the educator’s decision. This keeps the report clear and child-safe."
     : "This record is ready for a parent-teacher handoff without any further speech correction or teacher override.";
 
+  const actionPlan = [
+    regionalCount > 0
+      ? `Keep the silent-letter pattern in ${acceptedRegionalTokens.map((token) => humaniseToken(token)).join(", ")} as an evidence note and revisit it in a gentle follow-up task.`
+      : "No accent-safe variant needs special follow-up; continue with the normal target-word routine.",
+    reviewCount > 0
+      ? `Schedule a teacher review for the flagged word${reviewCount === 1 ? "" : "s"} before finalising the running record.`
+      : "No teacher review is needed before finalising this record.",
+    overrideCount > 0
+      ? "Use the teacher override to confirm the accepted sound and then capture the educator decision for the next session."
+      : "Keep the current read as a calm, non-corrective evidence record and continue with the next planned phonics task.",
+  ];
+
   return {
     overview,
     highlights,
     caution,
     nextStep,
+    actionPlan,
     reviewCount,
     regionalCount,
     overrideCount,

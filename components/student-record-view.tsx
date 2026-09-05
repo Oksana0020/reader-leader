@@ -34,6 +34,12 @@ export function StudentRecordView() {
             <ul className="mt-3 space-y-2">
               {teacherReport.highlights.map((item) => <li key={item} className="list-disc pl-5">{item}</li>)}
             </ul>
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-amber-800">Action plan</p>
+              <ul className="mt-2 space-y-2">
+                {teacherReport.actionPlan.map((step) => <li key={step} className="list-disc pl-5 text-sm text-amber-900">{step}</li>)}
+              </ul>
+            </div>
             <p className="mt-3 font-semibold text-slate-800">{teacherReport.caution}</p>
             <p className="mt-2 text-xs uppercase tracking-[0.14em] text-slate-500">Next step</p>
             <p className="mt-1 text-sm">{teacherReport.nextStep}</p>
