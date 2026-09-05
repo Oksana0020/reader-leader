@@ -5,7 +5,7 @@ import { BookOpen, ChartNoAxesColumn, House, Users } from "lucide-react";
 const items = [
   { href: "/dashboard", label: "Class Overview", icon: House },
   { href: "/dashboard/student", label: "Student Profiles", icon: Users },
-  { href: "/dashboard", label: "Phonics Tracker", icon: ChartNoAxesColumn },
+  { href: "/dashboard/report", label: "Teacher Report", icon: ChartNoAxesColumn },
   { href: "/dashboard", label: "Lesson Resources", icon: BookOpen },
 ];
 

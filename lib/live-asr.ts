@@ -19,6 +19,14 @@ export function createLiveAsrClient(url: string, onEvent?: (event: LiveAsrEvent)
   let socket: WebSocket | null = null;
   let recognition: BrowserSpeechRecognition | null = null;
   let fallbackActive = false;
+  let fallbackTimer: number | null = null;
+
+  const clearFallbackTimer = () => {
+    if (fallbackTimer !== null) {
+      clearTimeout(fallbackTimer);
+      fallbackTimer = null;
+    }
+  };
 
   const startBrowserFallback = () => {
     const RecognitionCtor = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
@@ -48,7 +56,25 @@ export function createLiveAsrClient(url: string, onEvent?: (event: LiveAsrEvent)
     };
 
     recognition.onerror = (event: any) => {
-      const message = event?.error ? `Speech fallback error: ${String(event.error)}` : "Speech fallback unavailable.";
+      const errorType = event?.error ? String(event.error) : "unknown";
+      if (errorType === "network") {
+        onEvent?.({ type: "status", text: "Browser fallback unavailable; local ASR server remains active." });
+        try {
+          recognition?.stop();
+        } catch {
+          // Ignore stop errors from short-lived browser fallback failures.
+        }
+        fallbackActive = false;
+        recognition = null;
+        return;
+      }
+
+      const message = errorType === "not-allowed"
+        ? "Microphone access was blocked for the browser fallback."
+        : errorType === "no-speech"
+          ? "The browser did not detect speech. Please try again."
+          : "Speech fallback unavailable. Local ASR remains the primary path.";
+
       onEvent?.({ type: "error", text: message });
     };
 
@@ -62,6 +88,8 @@ export function createLiveAsrClient(url: string, onEvent?: (event: LiveAsrEvent)
   };
 
   const connect = () => {
+    clearFallbackTimer();
+
     if (typeof WebSocket === "undefined") {
       onEvent?.({ type: "status", text: "WebSocket API is unavailable in this browser." });
       startBrowserFallback();
@@ -76,6 +104,7 @@ export function createLiveAsrClient(url: string, onEvent?: (event: LiveAsrEvent)
     socket.binaryType = "arraybuffer";
 
     socket.onopen = () => {
+      clearFallbackTimer();
       onEvent?.({ type: "status", text: "Local ASR connected." });
     };
 
@@ -90,14 +119,22 @@ export function createLiveAsrClient(url: string, onEvent?: (event: LiveAsrEvent)
     };
 
     socket.onerror = () => {
-      onEvent?.({ type: "error", text: "Local ASR unavailable. Start the Python Vosk server on port 8765." });
-      if (!fallbackActive) startBrowserFallback();
+      if (fallbackActive) return;
+      onEvent?.({ type: "status", text: "Local ASR connection unstable; checking fallback route." });
+      fallbackTimer = window.setTimeout(() => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          startBrowserFallback();
+        }
+      }, 1500);
     };
 
     socket.onclose = () => {
+      clearFallbackTimer();
       onEvent?.({ type: "status", text: "Local ASR disconnected." });
       socket = null;
-      if (!fallbackActive) startBrowserFallback();
+      if (!fallbackActive) {
+        fallbackTimer = window.setTimeout(() => startBrowserFallback(), 1500);
+      }
     };
   };
 
@@ -139,6 +176,8 @@ export function createLiveAsrClient(url: string, onEvent?: (event: LiveAsrEvent)
   };
 
   const close = () => {
+    clearFallbackTimer();
+
     if (recognition) {
       recognition.stop();
       recognition = null;

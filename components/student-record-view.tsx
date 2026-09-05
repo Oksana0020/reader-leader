@@ -28,12 +28,16 @@ export function StudentRecordView() {
           <div className="mt-6 rounded-2xl bg-[#f6f9ff] p-4 text-sm text-slate-700 shadow-sm">
             <p className="text-base font-black text-[var(--reader-teal-deep)]">Teacher summary</p>
             <p className="mt-2 font-medium">{teacherReport.overview}</p>
+            <div className="mt-3 rounded-xl border border-[var(--reader-teal)]/25 bg-white/70 px-3 py-2 text-xs font-bold text-[var(--reader-teal-deep)]">
+              AI stays in the reporting layer after the read. It summarises evidence for teachers; it does not interrupt the child mid-sentence.
+            </div>
             <ul className="mt-3 space-y-2">
               {teacherReport.highlights.map((item) => <li key={item} className="list-disc pl-5">{item}</li>)}
             </ul>
             <p className="mt-3 font-semibold text-slate-800">{teacherReport.caution}</p>
             <p className="mt-2 text-xs uppercase tracking-[0.14em] text-slate-500">Next step</p>
             <p className="mt-1 text-sm">{teacherReport.nextStep}</p>
+            <a className="mt-5 inline-flex items-center rounded-full bg-[var(--reader-teal)] px-4 py-2 text-sm font-black text-white" href="/dashboard/report">Open full teacher report</a>
           </div>
           <ol className="mt-8 space-y-9 border-l-4 border-slate-200 pl-6 text-lg">
             {latestOverride && <li><strong>Just now</strong><span className="mt-1 block">Teacher accepted the sounded silent ‘k’</span><span className="mt-1 block text-sm text-slate-500">{new Date(latestOverride.createdAt).toLocaleString("en-GB")}</span></li>}

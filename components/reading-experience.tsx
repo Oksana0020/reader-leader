@@ -184,11 +184,15 @@ export function ReadingExperience() {
       <StudentTopBar />
       <section className="mx-auto flex w-full max-w-[760px] flex-1 flex-col justify-between px-9 pb-5 pt-8 sm:px-12">
         <div className="mx-auto mb-8 w-full max-w-[680px] rounded-[1.5rem] border-2 border-[var(--reader-teal)]/30 bg-white/80 p-2 shadow-sm" aria-label="Pronunciation evaluation mode" role="group">
+          <div className="flex items-center justify-between gap-3 px-2 pt-2 text-[11px] font-black uppercase tracking-[0.18em] text-[var(--reader-teal-deep)]/80">
+            <span>Student journey</span>
+            <span className="rounded-full bg-[var(--reader-teal-soft)] px-2.5 py-1 text-[10px] tracking-[0.12em] text-[var(--reader-teal-deep)]">{audio.asrStatus}</span>
+          </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <button aria-pressed={state.session.evaluationMode === "standard-rp"} className={`pressable rounded-[1.1rem] px-3 py-2 text-sm font-black ${state.session.evaluationMode === "standard-rp" ? "bg-[var(--reader-gold)] text-white" : "text-[var(--reader-teal-deep)]"}`} disabled={audio.isActive || busy} onClick={() => setEvaluationMode("standard-rp")} type="button">Standard Received Pronunciation<br /><span className="font-semibold">Baseline ASR</span></button>
             <button aria-pressed={state.session.evaluationMode === "regional-restraint"} className={`pressable rounded-[1.1rem] px-3 py-2 text-sm font-black ${state.session.evaluationMode === "regional-restraint" ? "bg-[var(--reader-teal)] text-white" : "text-[var(--reader-teal-deep)]"}`} disabled={audio.isActive || busy} onClick={() => setEvaluationMode("regional-restraint")} type="button">Hiberno-English &amp; Northern Irish<br /><span className="font-semibold">Reader Leader Agent Restraint</span></button>
           </div>
-          <p className="px-2 pb-1 pt-2 text-center text-xs font-black text-[var(--reader-teal-deep)]">{state.session.evaluationMode === "regional-restraint" ? "Restraint as a feature · false-correction target 0.0%" : "Comparison mode · regional rhotic speech receives an amber interrupt"}</p>
+          <p className="px-2 pb-1 pt-2 text-center text-xs font-black text-[var(--reader-teal-deep)]">{state.session.evaluationMode === "regional-restraint" ? "Calm live listening · teacher review appears after the read" : "Comparison mode · a benchmark only, not the student-facing live correction path"}</p>
         </div>
         <div className="student-card relative grid min-h-[470px] place-items-center overflow-visible px-8 py-12 text-center sm:px-16">
           <p className="font-[var(--font-reading)] text-[4rem] leading-[1.22] font-semibold tracking-[-0.045em] text-[var(--reader-teal)] sm:text-[5rem]">

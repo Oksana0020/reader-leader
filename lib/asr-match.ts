@@ -21,9 +21,16 @@ export function isAccentSafeMatch(currentToken: string, recognizedToken: string,
   if (!current || !recognized) return false;
   if (current === recognized) return true;
 
-  if (current === "knight" && recognized === "night") return true;
-  if (current === "horse" && evaluationMode === "regional-restraint" && (recognized === "horse" || recognized === "hoarse")) return true;
+  const silentKVariants = new Set(["knight", "night"]);
+  if (silentKVariants.has(current) && silentKVariants.has(recognized)) return true;
+
+  const rhoticVariants = new Set(["horse", "hoarse"]);
+  if (rhoticVariants.has(current) && rhoticVariants.has(recognized)) {
+    return evaluationMode === "regional-restraint" || current === "hoarse" || recognized === "hoarse";
+  }
+
   if (current === "horse" && evaluationMode === "standard-rp" && recognized === "hoarse") return true;
+  if (current === "hoarse" && evaluationMode === "standard-rp" && recognized === "horse") return true;
 
   return false;
 }
@@ -34,17 +41,29 @@ export function getMatchingTranscriptWord(currentToken: string, transcriptText: 
 
   if (!current || tokens.length === 0) return null;
 
-  for (let index = tokens.length - 1; index >= 0; index -= 1) {
-    const candidate = tokens[index];
-    if (candidate === current) return candidate;
+  const lastRelevantWindow = tokens.slice(-Math.min(tokens.length, 12));
+
+  for (let index = lastRelevantWindow.length - 1; index >= 0; index -= 1) {
+    const candidate = lastRelevantWindow[index];
+    const normalized = normalizeAsrToken(candidate);
+
+    if (!normalized) continue;
+    if (normalized === current) return candidate;
     if (isAccentSafeMatch(currentToken, candidate, evaluationMode)) {
       return candidate;
     }
   }
 
   if (current.length <= 4) {
-    const exactStem = tokens.find((candidate) => normalizeAsrToken(candidate).startsWith(current.slice(0, 2)));
-    if (exactStem) return exactStem;
+    const prefix = current.slice(0, Math.min(2, current.length));
+    for (let index = lastRelevantWindow.length - 1; index >= 0; index -= 1) {
+      const candidate = lastRelevantWindow[index];
+      const normalized = normalizeAsrToken(candidate);
+      if (!normalized) continue;
+      if (normalized.startsWith(prefix) && normalized.length >= 3 && normalized.length <= current.length + 2) {
+        return candidate;
+      }
+    }
   }
 
   return null;
