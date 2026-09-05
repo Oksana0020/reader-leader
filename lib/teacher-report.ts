@@ -10,6 +10,7 @@ export function buildTeacherReport(alignment: AlignmentResponse) {
   const regionalCount = alignment.tokens.filter((token) => token.status === "accepted-regional-variant").length;
   const overrideCount = alignment.tokens.filter((token) => token.status === "accepted-teacher-override").length;
   const scoreImpactCount = alignment.tokens.filter((token) => token.scoreImpact).length;
+  const acceptedRegionalTokens = alignment.tokens.filter((token) => token.status === "accepted-regional-variant");
   const phonicsFocus = alignment.tokens.find((token) => ["knight", "horse"].includes(token.token.toLowerCase().replace(/[^a-z]/g, ""))) ?? null;
 
   const overview = reviewCount === 0 && scoreImpactCount === 0
@@ -19,7 +20,9 @@ export function buildTeacherReport(alignment: AlignmentResponse) {
       : "This reading was treated with restraint and is ready for a quick educator review.";
 
   const highlights = [
-    regionalCount > 0 ? `Regional restraint accepted ${regionalCount} accent-safe variation${regionalCount === 1 ? "" : "s"}.` : "No regional variant was flagged for automatic acceptance.",
+    regionalCount > 0
+      ? `Regional restraint accepted ${regionalCount} accent-safe variation${regionalCount === 1 ? "" : "s"}: ${acceptedRegionalTokens.map((token) => humaniseToken(token)).join(", ")}.`
+      : "No regional variant was flagged for automatic acceptance.",
     overrideCount > 0 ? `Teacher override accepted ${overrideCount} sound decision${overrideCount === 1 ? "" : "s"}.` : "No teacher override was needed for this read.",
     phonicsFocus ? `Phonics focus remained on “${humaniseToken(phonicsFocus)}” throughout the review.` : "No specific phonics focus was flagged in this session.",
   ];
@@ -40,5 +43,6 @@ export function buildTeacherReport(alignment: AlignmentResponse) {
     reviewCount,
     regionalCount,
     overrideCount,
+    acceptedRegionalTokens,
   };
 }

@@ -10,7 +10,7 @@ export default function TeacherReportPage() {
   const { state } = useReaderSession();
   const alignment = state.session.alignment ?? SEEDED_RUNNING_RECORD;
   const teacherReport = buildTeacherReport(alignment);
-  const relevantTokens = alignment.tokens.filter((token) => token.status !== "correct").slice(0, 5);
+  const relevantTokens = alignment.tokens.filter((token) => token.status !== "correct").slice(0, 6);
 
   return (
     <main className="educator-canvas min-h-screen px-5 py-6 sm:px-8">
@@ -112,7 +112,11 @@ export default function TeacherReportPage() {
                 <div className="grid grid-cols-[1.2fr_1fr_1.3fr] gap-3 border-t border-slate-200 bg-white px-4 py-3 text-sm text-slate-700" key={token.id}>
                   <span className="font-bold text-[var(--reader-teal-deep)]">{token.token}</span>
                   <span className="font-semibold capitalize text-slate-600">{token.status.replace(/-/g, " ")}</span>
-                  <span>{token.explanation ?? "No extra note recorded."}</span>
+                  <span>
+                    {token.status === "accepted-regional-variant"
+                      ? `${token.explanation ?? "Accepted as a regional variant."} ${token.heardAs ? `Heard as: ${token.heardAs}.` : ""}`
+                      : token.explanation ?? "No extra note recorded."}
+                  </span>
                 </div>
               ))
             )}

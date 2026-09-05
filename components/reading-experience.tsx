@@ -10,7 +10,7 @@ import { useHesitationFSM } from "@/hooks/use-hesitation-fsm";
 import { alignSpeech } from "@/lib/speech-alignment-client";
 import { advanceTokenIndex, INITIAL_TOKEN_INDEX, shouldAutoFinishReading, shouldShowBaselineInterrupt, shouldSuppressFinalHesitation } from "@/lib/hesitation-fsm";
 import { ATTEMPT_SNIPPET_DURATION_MS, ATTEMPT_SNIPPET_PRE_ROLL_MS, blobToAudioDataUri } from "@/lib/audio-data";
-import { getMatchingTranscriptWord, isAccentSafeMatch } from "@/lib/asr-match";
+import { getMatchingTranscriptWord, isAccentSafeMatch, transcriptMatchesTargetSentence } from "@/lib/asr-match";
 
 function stripPunctuation(token: string) {
   return token.toLowerCase().replace(/[^a-z']/g, "");
@@ -33,6 +33,7 @@ export function ReadingExperience() {
   const audio = useHesitationFSM();
   const [alignmentError, setAlignmentError] = useState<string | null>(null);
   const [liveAsrText, setLiveAsrText] = useState("");
+  const lastLiveWordRef = useRef<string | null>(null);
   const handledSpeechStartRef = useRef(0);
   const handledSpeechEndRef = useRef(0);
   const finalTokenSpokenRef = useRef(false);
@@ -44,7 +45,9 @@ export function ReadingExperience() {
   const currentIndex = Math.min(state.session.currentTokenIndex, words.length - 1);
   const baselineInterrupt = shouldShowBaselineInterrupt(state.session.evaluationMode, words[currentIndex], audio.isActive, audio.silenceMs);
   const suppressFinalHesitation = shouldSuppressFinalHesitation(state.session.evaluationMode, currentIndex, words.length);
-  const asrMatch = getMatchingTranscriptWord(words[currentIndex], liveAsrText, state.session.evaluationMode);
+  const cleanTranscript = liveAsrText.replace(/\s+/g, " ").trim();
+  const asrMatch = getMatchingTranscriptWord(words[currentIndex], cleanTranscript, state.session.evaluationMode);
+  const sentenceMatches = !!cleanTranscript && transcriptMatchesTargetSentence(story.targetText, cleanTranscript, state.session.evaluationMode);
   const liveWordRecognized = Boolean(asrMatch) && isAccentSafeMatch(words[currentIndex], asrMatch!, state.session.evaluationMode);
   const showHighlight = (!suppressFinalHesitation && (audio.phase === "hesitating" || audio.phase === "prompting")) || baselineInterrupt || liveWordRecognized;
   const busy = !hydrated || audio.phase === "requesting-permission" || audio.phase === "finishing" || state.session.status === "aligning";
@@ -67,8 +70,18 @@ export function ReadingExperience() {
   }, [audio, hydrated, prepareReadingAttempt, resetAttemptRefs, story.id]);
 
   useEffect(() => {
-    setLiveAsrText(audio.asrTranscript ?? "");
-  }, [audio.asrTranscript]);
+    const nextAsrText = (audio.asrTranscript ?? "").replace(/\s+/g, " ").trim();
+    setLiveAsrText(nextAsrText);
+    if (!nextAsrText) {
+      lastLiveWordRef.current = null;
+      return;
+    }
+
+    const latestCandidate = getMatchingTranscriptWord(words[currentIndex], nextAsrText, state.session.evaluationMode);
+    if (latestCandidate) {
+      lastLiveWordRef.current = latestCandidate;
+    }
+  }, [audio.asrTranscript, currentIndex, state.session.evaluationMode, words]);
 
   async function startMicrophone() {
     setCurrentToken(INITIAL_TOKEN_INDEX);
@@ -141,14 +154,15 @@ export function ReadingExperience() {
     }
 
     const nextIndex = advanceTokenIndex(currentIndex, words.length);
-    if (nextIndex !== currentIndex) {
+    if (nextIndex !== currentIndex && lastLiveWordRef.current !== null) {
       setCurrentToken(nextIndex);
     }
   }, [currentIndex, liveWordRecognized, setCurrentToken, words.length]);
 
   useEffect(() => {
-    if (shouldAutoFinishReading(currentIndex, words.length, finalTokenSpokenRef.current, audio.silenceMs, state.session.evaluationMode)) void finishReading();
-  }, [audio.silenceMs, currentIndex, finishReading, state.session.evaluationMode, words.length]);
+    const sentenceCompleted = sentenceMatches && currentIndex === words.length - 1 && finalTokenSpokenRef.current;
+    if (shouldAutoFinishReading(currentIndex, words.length, finalTokenSpokenRef.current, audio.silenceMs, state.session.evaluationMode) || sentenceCompleted) void finishReading();
+  }, [audio.silenceMs, currentIndex, finishReading, sentenceMatches, state.session.evaluationMode, words.length]);
 
   function moveBack() {
     finalTokenSpokenRef.current = false;
@@ -202,8 +216,15 @@ export function ReadingExperience() {
               </span>
             ))}
           </p>
-          {liveAsrText && (
-            <p className="mt-4 text-sm font-semibold text-[var(--reader-teal-deep)]">ASR live: {liveAsrText}</p>
+          {cleanTranscript && (
+            <p className="mt-4 text-sm font-semibold text-[var(--reader-teal-deep)]">
+              ASR live: {cleanTranscript}
+              {lastLiveWordRef.current && (
+                <span className="ml-2 rounded-full bg-[var(--reader-teal-soft)] px-2 py-0.5 text-[11px] font-black uppercase tracking-[0.12em] text-[var(--reader-teal-deep)]">
+                  matching {lastLiveWordRef.current}
+                </span>
+              )}
+            </p>
           )}
           {audio.phase === "prompting" && !suppressFinalHesitation && (
             <p className="absolute -bottom-7 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border-4 border-white bg-[#fff0c8] px-5 py-2 text-lg font-black text-[var(--reader-gold-deep)] shadow-lg" role="status">

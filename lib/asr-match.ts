@@ -1,6 +1,26 @@
 /** Demo ASR boundary: normalize transcript text and map it to the currently active word while preserving accent-safe acceptance rules. */
 import type { EvaluationMode } from "@/lib/domain";
 
+const silentKPatterns = [
+  ["knight", "night"],
+  ["knight", "nite"],
+  ["night", "knight"],
+  ["night", "nite"],
+  ["head", "hed"],
+];
+
+const rhoticPatterns = [
+  ["horse", "hoarse"],
+  ["horse", "horse"],
+  ["hoarse", "horse"],
+  ["for", "four"],
+  ["four", "for"],
+];
+
+function variantPairMatches(current: string, recognized: string, variants: string[][]): boolean {
+  return variants.some(([left, right]) => (current === left && recognized === right) || (current === right && recognized === left));
+}
+
 export function normalizeAsrToken(token: string): string {
   return token.toLowerCase().replace(/[^a-z]/g, "");
 }
@@ -21,11 +41,9 @@ export function isAccentSafeMatch(currentToken: string, recognizedToken: string,
   if (!current || !recognized) return false;
   if (current === recognized) return true;
 
-  const silentKVariants = new Set(["knight", "night"]);
-  if (silentKVariants.has(current) && silentKVariants.has(recognized)) return true;
+  if (variantPairMatches(current, recognized, silentKPatterns)) return true;
 
-  const rhoticVariants = new Set(["horse", "hoarse"]);
-  if (rhoticVariants.has(current) && rhoticVariants.has(recognized)) {
+  if (variantPairMatches(current, recognized, rhoticPatterns)) {
     return evaluationMode === "regional-restraint" || current === "hoarse" || recognized === "hoarse";
   }
 
@@ -35,6 +53,24 @@ export function isAccentSafeMatch(currentToken: string, recognizedToken: string,
   return false;
 }
 
+export function transcriptMatchesTargetSentence(targetText: string, transcriptText: string, evaluationMode: EvaluationMode): boolean {
+  const targetTokens = tokenizeAsrTranscript(targetText);
+  const transcriptTokens = tokenizeAsrTranscript(transcriptText);
+
+  if (targetTokens.length === 0 || transcriptTokens.length === 0) return false;
+  if (targetTokens.length !== transcriptTokens.length) return false;
+
+  for (let index = 0; index < targetTokens.length; index += 1) {
+    const targetToken = targetTokens[index];
+    const transcriptToken = transcriptTokens[index];
+    if (targetToken === transcriptToken) continue;
+    if (isAccentSafeMatch(targetToken, transcriptToken, evaluationMode)) continue;
+    return false;
+  }
+
+  return true;
+}
+
 export function getMatchingTranscriptWord(currentToken: string, transcriptText: string, evaluationMode: EvaluationMode): string | null {
   const tokens = tokenizeAsrTranscript(transcriptText);
   const current = normalizeAsrToken(currentToken);
@@ -42,17 +78,23 @@ export function getMatchingTranscriptWord(currentToken: string, transcriptText: 
   if (!current || tokens.length === 0) return null;
 
   const lastRelevantWindow = tokens.slice(-Math.min(tokens.length, 12));
+  const exactMatches: string[] = [];
 
   for (let index = lastRelevantWindow.length - 1; index >= 0; index -= 1) {
     const candidate = lastRelevantWindow[index];
     const normalized = normalizeAsrToken(candidate);
 
     if (!normalized) continue;
-    if (normalized === current) return candidate;
+    if (normalized === current) {
+      exactMatches.push(candidate);
+      return candidate;
+    }
     if (isAccentSafeMatch(currentToken, candidate, evaluationMode)) {
       return candidate;
     }
   }
+
+  if (exactMatches.length > 0) return exactMatches[0];
 
   if (current.length <= 4) {
     const prefix = current.slice(0, Math.min(2, current.length));
