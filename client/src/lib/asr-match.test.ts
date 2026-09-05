@@ -15,6 +15,8 @@ describe("asr-match", () => {
   it("accepts Irish-English silent-k and rhotic variants in regional restraint", () => {
     expect(isAccentSafeMatch("horse", "hoarse", "regional-restraint")).toBe(true);
     expect(isAccentSafeMatch("hoarse", "horse", "regional-restraint")).toBe(true);
+    expect(isAccentSafeMatch("for", "four", "regional-restraint")).toBe(true);
+    expect(isAccentSafeMatch("four", "for", "regional-restraint")).toBe(true);
     expect(getMatchingTranscriptWord("horse", "the horse came down the road with a hoarse cry", "regional-restraint")).toBe("hoarse");
   });
 
@@ -40,5 +42,10 @@ describe("asr-match", () => {
   it("rejects sentence-level mismatches even when the ending of the sentence is the same", () => {
     expect(transcriptMatchesTargetSentence("the big cat sat on the mat", "the small dog sat on the mat", "standard-rp")).toBe(false);
     expect(transcriptMatchesTargetSentence("the big cat sat on the mat", "the big cat sat on the mat", "standard-rp")).toBe(true);
+  });
+
+  it("keeps the transcript safe when Irish-English variants appear in a sentence with multiple related sounds", () => {
+    expect(getMatchingTranscriptWord("knight", "the brave knight was waiting by the gate and then the knight returned", "regional-restraint")).toBe("knight");
+    expect(getMatchingTranscriptWord("horse", "the horse came down the road with a hoarse cry", "regional-restraint")).toBe("hoarse");
   });
 });

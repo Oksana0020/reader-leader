@@ -78,23 +78,20 @@ export function getMatchingTranscriptWord(currentToken: string, transcriptText: 
   if (!current || tokens.length === 0) return null;
 
   const lastRelevantWindow = tokens.slice(-Math.min(tokens.length, 12));
-  const exactMatches: string[] = [];
 
   for (let index = lastRelevantWindow.length - 1; index >= 0; index -= 1) {
     const candidate = lastRelevantWindow[index];
     const normalized = normalizeAsrToken(candidate);
 
     if (!normalized) continue;
-    if (normalized === current) {
-      exactMatches.push(candidate);
-      return candidate;
-    }
+    if (normalized === current) return candidate;
     if (isAccentSafeMatch(currentToken, candidate, evaluationMode)) {
       return candidate;
     }
   }
 
-  if (exactMatches.length > 0) return exactMatches[0];
+  const maybeCurrentWord = lastRelevantWindow.findLast((token) => normalizeAsrToken(token) === current);
+  if (maybeCurrentWord) return maybeCurrentWord;
 
   if (current.length <= 4) {
     const prefix = current.slice(0, Math.min(2, current.length));

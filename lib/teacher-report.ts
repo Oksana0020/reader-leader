@@ -14,26 +14,26 @@ export function buildTeacherReport(alignment: AlignmentResponse) {
   const phonicsFocus = alignment.tokens.find((token) => ["knight", "horse"].includes(token.token.toLowerCase().replace(/[^a-z]/g, ""))) ?? null;
 
   const overview = reviewCount === 0 && scoreImpactCount === 0
-    ? "This reading stayed within the agreed restraint pattern and required no direct correction."
+    ? "This read remained within the agreed accent-safe pattern. The system kept the child’s flow calm and recorded no score-impacting corrections."
     : scoreImpactCount > 0
-      ? "This reading includes a small number of score-impacting classifications that should be checked before finalising the report."
-      : "This reading was treated with restraint and is ready for a quick educator review.";
+      ? "This reading includes a small number of score-impacting classifications that should be checked before finalising the teacher summary."
+      : "This reading was treated with restraint and is ready for a quick educator review of accepted regional variation.";
 
   const highlights = [
     regionalCount > 0
-      ? `Regional restraint accepted ${regionalCount} accent-safe variation${regionalCount === 1 ? "" : "s"}: ${acceptedRegionalTokens.map((token) => humaniseToken(token)).join(", ")}.`
-      : "No regional variant was flagged for automatic acceptance.",
-    overrideCount > 0 ? `Teacher override accepted ${overrideCount} sound decision${overrideCount === 1 ? "" : "s"}.` : "No teacher override was needed for this read.",
-    phonicsFocus ? `Phonics focus remained on “${humaniseToken(phonicsFocus)}” throughout the review.` : "No specific phonics focus was flagged in this session.",
+      ? `Accepted regional variation: ${regionalCount} word${regionalCount === 1 ? "" : "s"} was treated as accent-safe and remained non-penalising (${acceptedRegionalTokens.map((token) => humaniseToken(token)).join(", ")}).`
+      : "No accepted regional variant was recorded during this read, so the evidence remained standard pronunciation only.",
+    overrideCount > 0 ? `Teacher override accepted ${overrideCount} sound decision${overrideCount === 1 ? "" : "s"} after the live read.` : "No teacher override was needed for this read.",
+    phonicsFocus ? `Phonics focus remained on “${humaniseToken(phonicsFocus)}” during the review and the evidence note stays tied to that target sound.` : "No specific phonics focus was flagged in this session.",
   ];
 
   const caution = reviewCount > 0
-    ? `Provisional review flagged ${reviewCount} word${reviewCount === 1 ? "" : "s"} for educator judgement.`
+    ? `Provisional review flagged ${reviewCount} word${reviewCount === 1 ? "" : "s"} for educator judgement before the reading record is finalised.`
     : "No provisional warnings require immediate action for this read.";
 
   const nextStep = overrideCount > 0 || reviewCount > 0
-    ? "Use the running record to confirm the teacher override or approve the provisional review."
-    : "This record is ready for a parent-teacher handoff without further speech correction.";
+    ? "Review the evidence notes, confirm any teacher override, and then finalise the running record with the educator’s decision."
+    : "This record is ready for a parent-teacher handoff without any further speech correction or teacher override.";
 
   return {
     overview,

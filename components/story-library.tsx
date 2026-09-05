@@ -7,6 +7,7 @@ import { BookOpen, ChevronLeft } from "lucide-react";
 import { useReaderSession } from "@/app/providers";
 import { GreenBandIllustration } from "@/components/green-band-illustration";
 import { STORIES } from "@/lib/seed";
+import { recommendStoriesForStory } from "@/lib/story-recommender";
 import type { BookBandId, Story } from "@/lib/domain";
 
 const bands: Array<{ id: BookBandId; label: string; pillClass: string; focusColour: string }> = [
@@ -45,6 +46,9 @@ function StoryCard({ story, focusColour }: { story: Story; focusColour: string }
 }
 
 export function StoryLibrary() {
+  const { state } = useReaderSession();
+  const recommendedStories = recommendStoriesForStory(state.selectedStoryId, STORIES, 3);
+
   return (
     <main className="student-canvas overflow-hidden pb-16">
       <div className="mx-auto max-w-[860px]">
@@ -54,6 +58,20 @@ export function StoryLibrary() {
           </button>
           <h1 className="text-center text-[2.65rem] leading-tight font-black tracking-[-0.04em] text-[var(--reader-teal)] sm:text-[3.3rem]">Choose Your Story</h1>
         </header>
+
+        <section className="px-5 pb-4 sm:px-10">
+          <div className="rounded-[2rem] border border-[var(--reader-teal)]/20 bg-white/80 p-4 shadow-sm">
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--reader-teal-deep)]/70">Recommended next reads</p>
+            <div className="mt-3 flex gap-4 overflow-x-auto pb-1">
+              {recommendedStories.map((story) => (
+                <button className="student-card pressable flex w-[180px] shrink-0 flex-col items-center overflow-hidden px-3 pb-3 pt-4 text-center" key={story.id} onClick={() => { const { selectStory } = useReaderSession(); selectStory(story); window.location.href = "/read"; }} type="button">
+                  <span className="text-sm font-black uppercase tracking-[0.18em] text-[var(--reader-gold-deep)]">{story.bandLabel}</span>
+                  <span className="mt-2 text-lg font-black text-[var(--reader-teal-deep)]">{story.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <div className="space-y-12 pt-6 sm:space-y-14">
           {bands.map((band) => (
